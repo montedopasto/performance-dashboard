@@ -131,7 +131,26 @@ async function carregarUtilizador(){
 
         console.log(data);
 
-        const utilizador = data.value[0].fields;
+        const emailMicrosoft =
+    localStorage.getItem("userEmail");
+
+const utilizadorItem = data.value.find(item => {
+
+    return item.fields.EmailMicrosoft ===
+        emailMicrosoft;
+
+});
+
+if(!utilizadorItem){
+
+    alert("Utilizador não encontrado.");
+
+    return;
+
+}
+
+const utilizador =
+    utilizadorItem.fields;
 
         document.getElementById("topUser").innerHTML =
             utilizador.NomeColaborador;
