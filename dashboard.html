@@ -141,9 +141,110 @@ async function carregarUtilizador(){
 
 }
 
+async function carregarKPIs(){
+
+    try{
+
+        const token =
+            localStorage.getItem("accessToken");
+
+        const response = await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/KPIsDashboard/items?$expand=fields`,
+
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
+                }
+            }
+
+        );
+
+        const data = await response.json();
+
+        console.log(data);
+
+        const grid =
+            document.getElementById("kpiGrid");
+
+        grid.innerHTML = "";
+
+        data.value.forEach(item => {
+
+            const kpi = item.fields;
+
+            let estadoClasse = "positive";
+
+            if(kpi.CorBase === "orange"){
+                estadoClasse = "warning";
+            }
+
+            if(kpi.CorBase === "red"){
+                estadoClasse = "negative";
+            }
+
+            const valorFake =
+                Math.floor(Math.random()*40)+60;
+
+            const html = `
+
+                <div class="kpi-card ${estadoClasse}">
+
+                    <div class="kpi-top">
+
+                        <div>
+
+                            <div class="kpi-title">
+                                ${kpi.NomeKPI}
+                            </div>
+
+                            <div class="kpi-target">
+                                Meta: 90
+                            </div>
+
+                        </div>
+
+                        <div class="kpi-status">
+                            ↑
+                        </div>
+
+                    </div>
+
+                    <div class="kpi-value">
+                        ${valorFake}
+                    </div>
+
+                    <div class="sparkline">
+
+                        <div
+                            class="spark-fill"
+                            style="width:${valorFake}%"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            `;
+
+            grid.innerHTML += html;
+
+        });
+
+    }
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
 carregarUtilizador();
 
-</script>    
+carregarKPIs();
+
+</script>  
 <script>
 
 const radarCtx =
