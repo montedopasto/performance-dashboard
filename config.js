@@ -2,11 +2,11 @@ const CONFIG = {
 
     clientId: "247b5853-5e9d-4907-8955-a1fa67adb33a",
 
-    tenantId: "COLOCA_AQUI_TENANT_ID",
+    tenantId: "ee417351-ea90-41e0-9147-5ea6ab38ea49",
 
     redirectUri: window.location.origin + "/performance-dashboard/",
 
-    authority: "https://login.microsoftonline.com/COLOCA_AQUI_TENANT_ID",
+    authority: "https://login.microsoftonline.com/ee417351-ea90-41e0-9147-5ea6ab38ea49",
 
     scopes: [
         "User.Read",
