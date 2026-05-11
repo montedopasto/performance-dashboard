@@ -183,8 +183,11 @@ async function carregarKPIs(){
                 estadoClasse = "negative";
             }
 
-            const valorFake =
-                Math.floor(Math.random()*40)+60;
+            const valorReal =
+    kpi.ValorAtual || 0;
+
+const metaReal =
+    kpi.Meta || 0;
 
             const html = `
 
