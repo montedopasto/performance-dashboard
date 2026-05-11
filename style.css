@@ -5,58 +5,117 @@
 }
 
 body{
-    font-family:Inter,Segoe UI,sans-serif;
-    background:#f5f6f8;
-    min-height:100vh;
+    background:#f4f6f8;
+    font-family:'Inter',sans-serif;
+    color:#111827;
+}
+
+.dashboard{
+    max-width:1400px;
+    margin:auto;
+    padding:30px;
+}
+
+.topbar{
     display:flex;
-    justify-content:center;
+    justify-content:space-between;
     align-items:center;
-}
-
-.login-screen{
-    width:100%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
-
-.login-card{
-    background:white;
-    width:400px;
-    padding:50px;
-    border-radius:24px;
-    box-shadow:0 10px 40px rgba(0,0,0,0.08);
-    text-align:center;
-}
-
-.login-card h1{
-    font-size:32px;
-    margin-bottom:10px;
-    color:#1f2937;
-}
-
-.login-card p{
-    color:#6b7280;
     margin-bottom:30px;
 }
 
-button{
-    width:100%;
-    border:none;
+.logo-area{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
+.logo-circle{
+    width:54px;
+    height:54px;
+    border-radius:50%;
     background:#5f7752;
-    color:white;
-    padding:16px;
-    border-radius:14px;
-    font-size:16px;
-    cursor:pointer;
-    transition:0.2s;
 }
 
-button:hover{
-    opacity:0.9;
+.logo-title{
+    font-size:28px;
+    font-weight:800;
 }
 
-#status{
-    margin-top:20px;
+.logo-subtitle{
     color:#6b7280;
+    margin-top:4px;
+}
+
+.top-user{
+    font-weight:600;
+}
+
+.summary-card{
+    background:white;
+    border-radius:30px;
+    padding:35px;
+    display:flex;
+    gap:30px;
+    align-items:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.05);
+}
+
+.profile-image{
+    width:140px;
+    height:140px;
+    border-radius:50%;
+    object-fit:cover;
+}
+
+.summary-role{
+    font-size:36px;
+    font-weight:700;
+    margin-bottom:10px;
+}
+
+.summary-score{
+    font-size:88px;
+    font-weight:800;
+    color:#5f7752;
+    line-height:1;
+}
+
+.summary-score span{
+    font-size:34px;
+    color:#111827;
+    font-weight:600;
+}
+
+.summary-message{
+    margin-top:14px;
+    font-size:24px;
+    color:#374151;
+}
+
+.summary-trend{
+    margin-top:16px;
+    color:#16a34a;
+    font-weight:600;
+    font-size:18px;
+}
+
+@media(max-width:900px){
+
+    .summary-card{
+        flex-direction:column;
+        text-align:center;
+    }
+
+    .summary-role{
+        font-size:28px;
+    }
+
+    .summary-score{
+        font-size:64px;
+    }
+
+    .summary-message{
+        font-size:18px;
+    }
+
 }
