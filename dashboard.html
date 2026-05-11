@@ -197,7 +197,18 @@ async function carregarKPIs(){
         grid.innerHTML = "";
         let somaScores = 0;
 let totalKPIs = 0;
-        data.value.forEach(item => {
+        const colaboradorID =
+    window.colaboradorAtual.NumeroColaborador;
+
+const historicoFiltrado =
+    data.value.filter(item => {
+
+        return item.fields.ColaboradorID ==
+            colaboradorID;
+
+    });
+
+historicoFiltrado.forEach(item => {
 
             const kpi = item.fields;
 
