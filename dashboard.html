@@ -208,7 +208,11 @@ const metaReal =
                         </div>
 
                         <div class="kpi-status">
-                            ↑
+                            ${kpi.Tendencia === "SUBIDA" ? "↑" : ""}
+
+${kpi.Tendencia === "DESCIDA" ? "↓" : ""}
+
+${kpi.Tendencia === "ESTAVEL" ? "•" : ""}
                         </div>
 
                     </div>
