@@ -238,8 +238,41 @@ somaScores += valorReal;
 totalKPIs++;
         });
 
-    }
-    catch(error){
+const overall =
+    Math.round(somaScores / totalKPIs);
+
+document.getElementById("overallScore")
+    .innerHTML = overall;
+
+let mensagem = "";
+
+if(overall >= 85){
+
+    mensagem =
+        "Performance global excelente";
+
+}
+else if(overall >= 70){
+
+    mensagem =
+        "Performance consistente";
+
+}
+else{
+
+    mensagem =
+        "Necessita atenção em KPIs críticos";
+
+}
+
+document.getElementById("summaryMessage")
+    .innerHTML = mensagem;
+
+document.getElementById("summaryTrend")
+    .innerHTML = "↑ Dashboard atualizado em tempo real";
+
+}
+catch(error){
 
         console.error(error);
 
