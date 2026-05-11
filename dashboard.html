@@ -175,13 +175,13 @@ async function carregarKPIs(){
 
             let estadoClasse = "positive";
 
-            if(kpi.CorBase === "orange"){
-                estadoClasse = "warning";
-            }
+            if(kpi.CorEstado === "AMARELO"){
+    estadoClasse = "warning";
+}
 
-            if(kpi.CorBase === "red"){
-                estadoClasse = "negative";
-            }
+if(kpi.CorEstado === "VERMELHO"){
+    estadoClasse = "negative";
+}
 
             const valorReal =
     kpi.ValorAtual || 0;
