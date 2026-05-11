@@ -48,7 +48,7 @@ async function getLists(){
 
         const response = await fetch(
 
-            `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists`,
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
 
             {
                 headers:{
