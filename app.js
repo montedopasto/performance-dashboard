@@ -27,10 +27,16 @@ async function loginMicrosoft(){
 
         statusDiv.innerHTML = "Login efetuado com sucesso.";
 
-        localStorage.setItem(
-            "accessToken",
-            loginResponse.accessToken
-        );
+        const tokenResponse =
+await msalInstance.acquireTokenSilent({
+    scopes: CONFIG.scopes,
+    account: loginResponse.account
+});
+
+localStorage.setItem(
+    "accessToken",
+    tokenResponse.accessToken
+);
 
         localStorage.setItem(
             "userName",
