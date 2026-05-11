@@ -327,81 +327,136 @@ carregarKPIs();
 </script>  
 <script>
 
-const radarCtx =
-document.getElementById('radarChart');
+let radarChart = null;
 
-new Chart(radarCtx, {
+async function carregarRadar(){
 
-    type:'radar',
+    try{
 
-    data:{
-        labels:[
-            'Liderança',
-            'Comunicação',
-            'Analítica',
-            'Operacional',
-            'Organização',
-            'Estratégia'
-        ],
+        const token =
+            localStorage.getItem("accessToken");
 
-        datasets:[{
-            label:'Soft Skills',
-            data:[82,75,91,70,88,80],
+        const colaboradorID =
+            window.colaboradorAtual.NumeroColaborador;
 
-            backgroundColor:'rgba(95,119,82,0.2)',
+        const response = await fetch(
 
-            borderColor:'#5f7752',
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoSoftSkills/items?$expand=fields`,
 
-            borderWidth:3,
-
-            pointBackgroundColor:'#5f7752',
-
-            pointRadius:4
-        }]
-    },
-
-    options:{
-
-        responsive:true,
-
-        maintainAspectRatio:false,
-
-        plugins:{
-            legend:{
-                display:false
-            }
-        },
-
-        scales:{
-            r:{
-                suggestedMin:0,
-                suggestedMax:100,
-
-                ticks:{
-                    display:false
-                },
-
-                grid:{
-                    color:'#e5e7eb'
-                },
-
-                angleLines:{
-                    color:'#e5e7eb'
-                },
-
-                pointLabels:{
-                    color:'#374151',
-                    font:{
-                        size:14,
-                        weight:'600'
-                    }
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
                 }
             }
+
+        );
+
+        const data = await response.json();
+
+        const skills =
+            data.value.filter(item => {
+
+                return item.fields.ColaboradorID ==
+                    colaboradorID;
+
+            });
+
+        const labels =
+            skills.map(item =>
+                item.fields.NomeSkill
+            );
+
+        const valores =
+            skills.map(item =>
+                item.fields.ValorAtual
+            );
+
+        const radarCtx =
+            document.getElementById('radarChart');
+
+        if(radarChart){
+            radarChart.destroy();
         }
+
+        radarChart = new Chart(radarCtx, {
+
+            type:'radar',
+
+            data:{
+
+                labels:labels,
+
+                datasets:[{
+
+                    label:'Soft Skills',
+
+                    data:valores,
+
+                    backgroundColor:'rgba(95,119,82,0.2)',
+
+                    borderColor:'#5f7752',
+
+                    borderWidth:3,
+
+                    pointBackgroundColor:'#5f7752',
+
+                    pointRadius:4
+
+                }]
+
+            },
+
+            options:{
+
+                responsive:true,
+
+                maintainAspectRatio:false,
+
+                plugins:{
+                    legend:{
+                        display:false
+                    }
+                },
+
+                scales:{
+                    r:{
+                        suggestedMin:0,
+                        suggestedMax:100,
+
+                        ticks:{
+                            display:false
+                        },
+
+                        grid:{
+                            color:'#e5e7eb'
+                        },
+
+                        angleLines:{
+                            color:'#e5e7eb'
+                        },
+
+                        pointLabels:{
+                            color:'#374151',
+                            font:{
+                                size:14,
+                                weight:'600'
+                            }
+                        }
+                    }
+                }
+
+            }
+
+        });
+
+    }
+    catch(error){
+
+        console.error(error);
 
     }
 
-});
+}
 
 </script>
 </body>
