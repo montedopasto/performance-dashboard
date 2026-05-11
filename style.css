@@ -205,3 +205,23 @@ body{
     width:58%;
     background:#dc2626;
 }
+.bottom-grid{
+    margin-top:30px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:24px;
+}
+
+.radar-card{
+    background:white;
+    border-radius:24px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.05);
+    height:520px;
+}
+
+.section-title{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:24px;
+}
