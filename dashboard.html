@@ -186,6 +186,84 @@
 
 </div>    
 </div>
+<script>
 
+const radarCtx =
+document.getElementById('radarChart');
+
+new Chart(radarCtx, {
+
+    type:'radar',
+
+    data:{
+        labels:[
+            'Liderança',
+            'Comunicação',
+            'Analítica',
+            'Operacional',
+            'Organização',
+            'Estratégia'
+        ],
+
+        datasets:[{
+            label:'Soft Skills',
+            data:[82,75,91,70,88,80],
+
+            backgroundColor:'rgba(95,119,82,0.2)',
+
+            borderColor:'#5f7752',
+
+            borderWidth:3,
+
+            pointBackgroundColor:'#5f7752',
+
+            pointRadius:4
+        }]
+    },
+
+    options:{
+
+        responsive:true,
+
+        maintainAspectRatio:false,
+
+        plugins:{
+            legend:{
+                display:false
+            }
+        },
+
+        scales:{
+            r:{
+                suggestedMin:0,
+                suggestedMax:100,
+
+                ticks:{
+                    display:false
+                },
+
+                grid:{
+                    color:'#e5e7eb'
+                },
+
+                angleLines:{
+                    color:'#e5e7eb'
+                },
+
+                pointLabels:{
+                    color:'#374151',
+                    font:{
+                        size:14,
+                        weight:'600'
+                    }
+                }
+            }
+        }
+
+    }
+
+});
+
+</script>
 </body>
 </html>
