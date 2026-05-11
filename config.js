@@ -4,6 +4,8 @@ const CONFIG = {
 
     tenantId: "ee417351-ea90-41e0-9147-5ea6ab38ea49",
 
+    siteId: "montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154",
+
     redirectUri: window.location.origin + "/performance-dashboard/",
 
     authority: "https://login.microsoftonline.com/ee417351-ea90-41e0-9147-5ea6ab38ea49",
