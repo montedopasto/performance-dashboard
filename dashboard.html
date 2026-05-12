@@ -203,8 +203,8 @@ let totalKPIs = 0;
 const historicoFiltrado =
     data.value.filter(item => {
 
-        return item.fields.ColaboradorID ==
-            colaboradorID;
+        return Number(item.fields.ColaboradorID) ===
+            Number(colaboradorID);
 
     });
 
