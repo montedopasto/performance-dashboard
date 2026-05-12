@@ -82,6 +82,33 @@ async function loginLocal(){
                 "pinColaborador"
             ).value;
 
+        const loginResponse =
+            await msalInstance.loginPopup({
+
+                scopes: CONFIG.scopes
+
+            });
+
+        const tokenResponse =
+            await msalInstance.acquireTokenSilent({
+
+                scopes: CONFIG.scopes,
+
+                account:
+                    loginResponse.account
+
+            });
+
+        localStorage.setItem(
+            "accessToken",
+            tokenResponse.accessToken
+        );
+
+        localStorage.setItem(
+            "account",
+            JSON.stringify(loginResponse.account)
+        );
+
         const response = await fetch(
 
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
@@ -90,7 +117,7 @@ async function loginLocal(){
                 headers:{
                     Authorization:
                         `Bearer ${
-                            localStorage.getItem("accessToken")
+                            tokenResponse.accessToken
                         }`
                 }
             }
@@ -127,13 +154,13 @@ async function loginLocal(){
         }
 
         localStorage.setItem(
-            "userEmail",
-            "LOCAL_LOGIN"
+            "numeroLocal",
+            numero
         );
 
         localStorage.setItem(
-            "numeroLocal",
-            numero
+            "tipoLogin",
+            "LOCAL"
         );
 
         window.location.href =
