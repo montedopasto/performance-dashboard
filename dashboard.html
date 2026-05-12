@@ -267,6 +267,14 @@ async function carregarUtilizador(){
 
         window.colaboradorAtual =
             utilizador;
+document.getElementById(
+    "detailsBtn"
+).onclick = function(){
+
+    window.location.href =
+`colaborador.html?id=${utilizador.NumeroColaborador}`;
+
+};        
 window.tipoUtilizador =
     utilizador.TipoUtilizador;
 if(
