@@ -327,14 +327,45 @@ async function carregarEquipa(){
             }
 
             let foto =
-                "https://ui-avatars.com/api/?name=User&background=5f7752&color=fff";
+    "https://ui-avatars.com/api/?name=User&background=5f7752&color=fff";
 
-            if(colaborador.FotoPerfil){
+if(colaborador.FotoPerfil){
 
-                foto =
-`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/${colaborador.FotoPerfil}:/content`;
+    try{
 
-            }
+        const fotoResponse =
+            await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/${colaborador.FotoPerfil}:/content`,
+
+                {
+                    headers:{
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+
+            );
+
+        const fotoBlob =
+            await fotoResponse.blob();
+
+        foto =
+            URL.createObjectURL(
+                fotoBlob
+            );
+
+    }
+    catch(error){
+
+        console.error(
+            "Erro foto:",
+            error
+        );
+
+    }
+
+}
 
             const html = `
 
