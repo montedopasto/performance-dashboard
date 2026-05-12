@@ -440,6 +440,8 @@ catch(error){
 
 async function iniciarDashboard(){
 
+    await renovarToken();
+
     await carregarUtilizador();
 
     await carregarKPIs();
