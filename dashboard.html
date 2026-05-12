@@ -474,7 +474,14 @@ catch(error){
     }
 
 }
+function logout(){
 
+    localStorage.clear();
+
+    window.location.href =
+        "index.html";
+
+}
 async function iniciarDashboard(){
 
     await renovarToken();
