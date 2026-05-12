@@ -320,3 +320,26 @@ body{
     height:70px;
     object-fit:contain;
 }
+.divider{
+    margin:30px 0;
+    color:#9ca3af;
+    position:relative;
+}
+
+.local-login{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+.local-login input{
+    border:1px solid #d1d5db;
+    border-radius:14px;
+    padding:16px;
+    font-size:16px;
+    outline:none;
+}
+
+.local-login input:focus{
+    border-color:#5f7752;
+}
