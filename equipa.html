@@ -244,15 +244,23 @@ async function carregarEquipa(){
         ){
 
             equipa =
-                utilizadoresData.value.filter(item => {
+    utilizadoresData.value.filter(item => {
 
-                    return Number(
-                        item.fields.ManagerID
-                    ) === Number(
-                        utilizador.NumeroColaborador
-                    );
+        return Number(
+            item.fields.ManagerID
+        ) === Number(
+            utilizador.NumeroColaborador
+        )
 
-                });
+        &&
+
+        Number(
+            item.fields.NumeroColaborador
+        ) !== Number(
+            utilizador.NumeroColaborador
+        );
+
+    });
 
         }
         else{
