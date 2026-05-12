@@ -343,3 +343,69 @@ body{
 .local-login input:focus{
     border-color:#5f7752;
 }
+.divider{
+    margin:26px 0;
+    text-align:center;
+    color:#9ca3af;
+    font-size:14px;
+    position:relative;
+}
+
+.divider::before{
+    content:"";
+    position:absolute;
+    left:0;
+    top:50%;
+    width:42%;
+    height:1px;
+    background:#e5e7eb;
+}
+
+.divider::after{
+    content:"";
+    position:absolute;
+    right:0;
+    top:50%;
+    width:42%;
+    height:1px;
+    background:#e5e7eb;
+}
+
+.local-login{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-top:10px;
+}
+
+.local-login input{
+    width:100%;
+    border:1px solid #d1d5db;
+    border-radius:14px;
+    padding:16px;
+    font-size:16px;
+    outline:none;
+    font-family:Inter,sans-serif;
+    transition:0.2s;
+}
+
+.local-login input:focus{
+    border-color:#5f7752;
+    box-shadow:0 0 0 4px rgba(95,119,82,0.15);
+}
+
+#localLoginBtn{
+    background:#111827;
+    color:white;
+}
+
+.login-logo-circle{
+    width:95px;
+    height:95px;
+    background-image:url("logo-monte-do-pasto.png");
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:center;
+    border-radius:0;
+    background-color:transparent;
+}
