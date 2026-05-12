@@ -226,10 +226,18 @@ async function carregarEquipa(){
 
         if(utilizador.TipoUtilizador === "ADMIN"){
 
-            equipa =
-                utilizadoresData.value;
+    equipa =
+        utilizadoresData.value.filter(item => {
 
-        }
+            return Number(
+                item.fields.NumeroColaborador
+            ) !== Number(
+                utilizador.NumeroColaborador
+            );
+
+        });
+
+}
         else if(
             utilizador.TipoUtilizador ===
             "CHEFIA"
