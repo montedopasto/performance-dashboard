@@ -257,6 +257,10 @@ async function carregarUtilizador(){
             utilizador;
 window.tipoUtilizador =
     utilizador.TipoUtilizador;
+        localStorage.setItem(
+    "tipoUtilizador",
+    utilizador.TipoUtilizador
+);
         document.getElementById("topUser").innerHTML =
             utilizador.NomeColaborador;
 
