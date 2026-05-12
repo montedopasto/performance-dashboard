@@ -574,32 +574,81 @@ async function carregarEquipa(){
 
         grid.innerHTML = "";
 
-        equipa.forEach(item => {
+        for(const item of equipa){
 
-            const colaborador =
-                item.fields;
+    const colaborador =
+        item.fields;
 
-            const html = `
+    const kpiResponse =
+        await fetch(
 
-                <div class="team-member">
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
 
-                    <div class="team-member-name">
-                        ${colaborador.NomeColaborador}
-                    </div>
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
+                }
+            }
 
-                    <div class="team-member-role">
-                        ${colaborador.Funcao}
-                    </div>
+        );
 
-                    <div class="team-member-score">
-    ${colaborador.Score || 0}
-</div>
+    const kpiData =
+        await kpiResponse.json();
 
-                </div>
+    const kpis =
+        kpiData.value.filter(kpi => {
 
-            `;
+            return Number(
+                kpi.fields.ColaboradorID
+            ) === Number(
+                colaborador.NumeroColaborador
+            );
 
-            grid.innerHTML += html;
+        });
+
+    let soma = 0;
+
+    kpis.forEach(kpi => {
+
+        soma += Number(
+            kpi.fields.ValorAtual
+        ) || 0;
+
+    });
+
+    const score =
+        kpis.length > 0
+        ?
+        Math.round(soma / kpis.length)
+        :
+        0;
+
+    colaborador.Score =
+        score;
+
+    const html = `
+
+        <div class="team-member">
+
+            <div class="team-member-name">
+                ${colaborador.NomeColaborador}
+            </div>
+
+            <div class="team-member-role">
+                ${colaborador.Funcao}
+            </div>
+
+            <div class="team-member-score">
+                ${score}
+            </div>
+
+        </div>
+
+    `;
+
+    grid.innerHTML += html;
+
+}
 
         });
 
