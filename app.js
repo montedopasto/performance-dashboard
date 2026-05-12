@@ -19,7 +19,8 @@ const msalInstance =
 
 document.getElementById("loginBtn")
 .addEventListener("click", login);
-
+document.getElementById("localLoginBtn")
+.addEventListener("click", loginLocal);
 async function login(){
 
     try{
