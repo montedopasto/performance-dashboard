@@ -198,7 +198,7 @@ async function carregarKPIs(){
         let somaScores = 0;
 let totalKPIs = 0;
         const colaboradorID =
-    window.colaboradorAtual.NumeroColaborador;
+    Number(window.colaboradorAtual.NumeroColaborador);
 
 const historicoFiltrado =
     data.value.filter(item => {
@@ -344,7 +344,7 @@ async function carregarRadar(){
             localStorage.getItem("accessToken");
 
         const colaboradorID =
-            window.colaboradorAtual.NumeroColaborador;
+    Number(window.colaboradorAtual.NumeroColaborador);
 
         const response = await fetch(
 
