@@ -102,9 +102,68 @@
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>    
 <script>
 
-if(!localStorage.getItem("accessToken")){
+const msalConfig = {
 
-    window.location.href = "index.html";
+    auth:{
+
+        clientId: CONFIG.clientId,
+
+        authority:
+            `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+
+        redirectUri:
+            CONFIG.redirectUri
+
+    }
+
+};
+
+const msalInstance =
+    new msal.PublicClientApplication(msalConfig);
+
+async function renovarToken(){
+
+    try{
+
+        const account =
+            JSON.parse(
+                localStorage.getItem("account")
+            );
+
+        if(!account){
+
+            window.location.href =
+                "index.html";
+
+            return;
+
+        }
+
+        const tokenResponse =
+            await msalInstance.acquireTokenSilent({
+
+                scopes: CONFIG.scopes,
+
+                account: account
+
+            });
+
+        localStorage.setItem(
+            "accessToken",
+            tokenResponse.accessToken
+        );
+
+    }
+    catch(error){
+
+        console.error(error);
+
+        localStorage.clear();
+
+        window.location.href =
+            "index.html";
+
+    }
 
 }
 
