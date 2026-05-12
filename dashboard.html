@@ -127,43 +127,97 @@ async function carregarUtilizador(){
 
         );
 
-        const data = await response.json();
-
-        console.log(data);
+        const data =
+            await response.json();
 
         const emailMicrosoft =
-    localStorage.getItem("userEmail");
+            localStorage.getItem("userEmail");
 
-const utilizadorItem = data.value.find(item => {
+        const utilizadorItem =
+            data.value.find(item => {
 
-    return item.fields.EmailMicrosoft ===
-        emailMicrosoft;
+                return item.fields.EmailMicrosoft ===
+                    emailMicrosoft;
 
-});
+            });
 
-if(!utilizadorItem){
+        if(!utilizadorItem){
 
-    alert("Utilizador não encontrado.");
+            alert("Utilizador não encontrado.");
 
-    return;
+            return;
 
-}
+        }
 
-const utilizador =
-    utilizadorItem.fields;
-window.colaboradorAtual =
-    utilizador;
+        const utilizador =
+            utilizadorItem.fields;
+
+        window.colaboradorAtual =
+            utilizador;
+
         document.getElementById("topUser").innerHTML =
             utilizador.NomeColaborador;
 
         document.getElementById("summaryRole").innerHTML =
             utilizador.Funcao;
-document.getElementById("profileImage").src =
-    utilizador.FotoURL;
+
+        await carregarFotoPerfil(
+            utilizador.FotoPerfil
+        );
+
     }
     catch(error){
 
         console.error(error);
+
+    }
+
+}
+
+async function carregarFotoPerfil(caminhoFoto){
+
+    try{
+
+        const token =
+            localStorage.getItem("accessToken");
+
+        if(!caminhoFoto){
+
+            document.getElementById("profileImage").src =
+                "https://ui-avatars.com/api/?name=User&background=5f7752&color=fff";
+
+            return;
+
+        }
+
+        const response = await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/${caminhoFoto}:/content`,
+
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
+                }
+            }
+
+        );
+
+        const blob =
+            await response.blob();
+
+        const imageUrl =
+            URL.createObjectURL(blob);
+
+        document.getElementById("profileImage").src =
+            imageUrl;
+
+    }
+    catch(error){
+
+        console.error(
+            "Erro ao carregar foto:",
+            error
+        );
 
     }
 
