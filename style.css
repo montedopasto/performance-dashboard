@@ -315,3 +315,8 @@ body{
     margin-top:24px;
     color:#6b7280;
 }
+.app-logo{
+    width:70px;
+    height:70px;
+    object-fit:contain;
+}
