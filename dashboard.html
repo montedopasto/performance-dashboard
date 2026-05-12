@@ -223,10 +223,10 @@ if(kpi.CorEstado === "VERMELHO"){
 }
 
             const valorReal =
-    kpi.ValorAtual || 0;
+    Number(kpi.ValorAtual) || 0;
 
 const metaReal =
-    kpi.Meta || 0;
+    Number(kpi.Meta) || 0;
 
             const html = `
 
