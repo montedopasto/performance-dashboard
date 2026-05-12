@@ -193,16 +193,46 @@ async function carregarUtilizador(){
         const data =
             await response.json();
 
-        const emailMicrosoft =
-            localStorage.getItem("userEmail");
+        const tipoLogin =
+            localStorage.getItem("tipoLogin");
 
-        const utilizadorItem =
-            data.value.find(item => {
+        let utilizadorItem = null;
 
-                return item.fields.EmailMicrosoft ===
-                    emailMicrosoft;
+        if(tipoLogin === "LOCAL"){
 
-            });
+            const numeroLocal =
+                Number(
+                    localStorage.getItem(
+                        "numeroLocal"
+                    )
+                );
+
+            utilizadorItem =
+                data.value.find(item => {
+
+                    return Number(
+                        item.fields.NumeroColaborador
+                    ) === numeroLocal;
+
+                });
+
+        }
+        else{
+
+            const emailMicrosoft =
+                localStorage.getItem(
+                    "userEmail"
+                );
+
+            utilizadorItem =
+                data.value.find(item => {
+
+                    return item.fields.EmailMicrosoft ===
+                        emailMicrosoft;
+
+                });
+
+        }
 
         if(!utilizadorItem){
 
