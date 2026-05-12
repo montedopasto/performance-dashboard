@@ -385,7 +385,13 @@ if(colaborador.FotoPerfil){
 
             const html = `
 
-                <div class="team-page-member">
+                <div
+    class="team-page-member"
+    onclick="
+        window.location.href=
+        'colaborador.html?id=${colaborador.NumeroColaborador}'
+    "
+>
 
                     <img
                         src="${foto}"
