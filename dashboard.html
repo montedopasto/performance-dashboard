@@ -264,6 +264,17 @@ async function carregarUtilizador(){
             utilizador;
 window.tipoUtilizador =
     utilizador.TipoUtilizador;
+if(
+    utilizador.TipoUtilizador === "ADMIN"
+    ||
+    utilizador.TipoUtilizador === "CHEFIA"
+){
+
+    document.getElementById(
+        "teamBtn"
+    ).style.display = "block";
+
+}        
         localStorage.setItem(
     "tipoUtilizador",
     utilizador.TipoUtilizador
