@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Colaborador</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div class="topbar">
+
+        <div class="logo-area">
+
+            <img
+                src="logo-monte-do-pasto.png"
+                class="app-logo"
+            >
+
+            <div>
+
+                <div class="logo-title">
+                    Monte do Pasto
+                </div>
+
+                <div class="logo-subtitle">
+                    Perfil Colaborador
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="topbar-right">
+
+            <button
+                class="logout-btn"
+                onclick="window.location.href='equipa.html'"
+            >
+                Equipa
+            </button>
+
+            <button
+                class="logout-btn"
+                onclick="window.location.href='dashboard.html'"
+            >
+                Dashboard
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="summary-card">
+
+        <div class="summary-left">
+
+            <img
+                id="profileImage"
+                class="profile-image"
+            >
+
+        </div>
+
+        <div class="summary-right">
+
+            <div
+                class="summary-role"
+                id="summaryRole"
+            ></div>
+
+            <div class="summary-score">
+
+                <span id="overallScore">
+                    0
+                </span>
+
+                <span>Pontos</span>
+
+            </div>
+
+            <div
+                class="summary-message"
+                id="summaryMessage"
+            ></div>
+
+        </div>
+
+    </div>
+
+    <div
+        class="kpi-grid"
+        id="kpiGrid"
+    ></div>
+
+</div>
+
+<script src="config.js"></script>
+
+<script>
+
+const colaboradorID =
+    new URLSearchParams(
+        window.location.search
+    ).get("id");
+
+async function carregarColaborador(){
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    const utilizadoresResponse =
+        await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
+
+            {
+                headers:{
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+
+        );
+
+    const utilizadoresData =
+        await utilizadoresResponse.json();
+
+    const utilizador =
+        utilizadoresData.value.find(item => {
+
+            return Number(
+                item.fields.NumeroColaborador
+            ) === Number(
+                colaboradorID
+            );
+
+        });
+
+    if(!utilizador){
+        return;
+    }
+
+    const colaborador =
+        utilizador.fields;
+
+    document.getElementById(
+        "summaryRole"
+    ).innerHTML =
+        colaborador.NomeColaborador;
+
+    let foto =
+        "https://ui-avatars.com/api/?name=User&background=5f7752&color=fff";
+
+    if(colaborador.FotoPerfil){
+
+        const fotoResponse =
+            await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/${colaborador.FotoPerfil}:/content`,
+
+                {
+                    headers:{
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+
+            );
+
+        const fotoBlob =
+            await fotoResponse.blob();
+
+        foto =
+            URL.createObjectURL(
+                fotoBlob
+            );
+
+    }
+
+    document.getElementById(
+        "profileImage"
+    ).src = foto;
+
+    const kpiResponse =
+        await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
+
+            {
+                headers:{
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+
+        );
+
+    const kpiData =
+        await kpiResponse.json();
+
+    const kpis =
+        kpiData.value.filter(item => {
+
+            return Number(
+                item.fields.ColaboradorID
+            ) === Number(
+                colaboradorID
+            );
+
+        });
+
+    let soma = 0;
+
+    const grid =
+        document.getElementById(
+            "kpiGrid"
+        );
+
+    grid.innerHTML = "";
+
+    kpis.forEach(item => {
+
+        const kpi =
+            item.fields;
+
+        soma += Number(
+            kpi.ValorAtual
+        ) || 0;
+
+        const html = `
+
+            <div class="kpi-card">
+
+                <div class="kpi-title">
+                    ${kpi.NomeKPI}
+                </div>
+
+                <div class="kpi-value">
+                    ${kpi.ValorAtual}
+                </div>
+
+            </div>
+
+        `;
+
+        grid.innerHTML += html;
+
+    });
+
+    const score =
+        kpis.length > 0
+        ?
+        Math.round(soma / kpis.length)
+        :
+        0;
+
+    document.getElementById(
+        "overallScore"
+    ).innerHTML = score;
+
+}
+
+carregarColaborador();
+
+</script>
+
+</body>
+</html>
