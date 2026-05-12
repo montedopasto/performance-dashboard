@@ -1,65 +1,68 @@
 const msalConfig = {
-    auth: {
+
+    auth:{
+
         clientId: CONFIG.clientId,
-        authority: CONFIG.authority,
-        redirectUri: CONFIG.redirectUri
+
+        authority:
+            `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+
+        redirectUri:
+            CONFIG.redirectUri
+
     }
+
 };
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+const msalInstance =
+    new msal.PublicClientApplication(msalConfig);
 
-const loginBtn = document.getElementById("loginBtn");
-const statusDiv = document.getElementById("status");
+document.getElementById("loginBtn")
+.addEventListener("click", login);
 
-loginBtn.addEventListener("click", loginMicrosoft);
-
-async function loginMicrosoft(){
+async function login(){
 
     try{
 
-        statusDiv.innerHTML = "A iniciar sessão...";
+        const loginResponse =
+            await msalInstance.loginPopup({
 
-        const loginResponse = await msalInstance.loginPopup({
-            scopes: CONFIG.scopes
-        });
+                scopes: CONFIG.scopes
 
-        console.log(loginResponse);
-
-        statusDiv.innerHTML = "Login efetuado com sucesso.";
+            });
 
         const tokenResponse =
-await msalInstance.acquireTokenSilent({
-    scopes: CONFIG.scopes,
-    account: loginResponse.account
-});
+            await msalInstance.acquireTokenSilent({
 
-localStorage.setItem(
-    "accessToken",
-    tokenResponse.accessToken
-);
+                scopes: CONFIG.scopes,
 
-        localStorage.setItem(
-            "userName",
-            loginResponse.account.name
-        );
+                account:
+                    loginResponse.account
+
+            });
 
         localStorage.setItem(
             "userEmail",
             loginResponse.account.username
         );
 
-        setTimeout(() => {
+        localStorage.setItem(
+            "account",
+            JSON.stringify(loginResponse.account)
+        );
 
-            window.location.href = "dashboard.html";
+        localStorage.setItem(
+            "accessToken",
+            tokenResponse.accessToken
+        );
 
-        },1000);
+        window.location.href =
+            "dashboard.html";
 
     }
     catch(error){
 
         console.error(error);
-
-        statusDiv.innerHTML = "Erro no login.";
 
     }
 
