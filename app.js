@@ -68,3 +68,82 @@ async function login(){
     }
 
 }
+async function loginLocal(){
+
+    try{
+
+        const numero =
+            document.getElementById(
+                "numeroColaborador"
+            ).value;
+
+        const pin =
+            document.getElementById(
+                "pinColaborador"
+            ).value;
+
+        const response = await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
+
+            {
+                headers:{
+                    Authorization:
+                        `Bearer ${
+                            localStorage.getItem("accessToken")
+                        }`
+                }
+            }
+
+        );
+
+        const data =
+            await response.json();
+
+        const utilizador =
+            data.value.find(item => {
+
+                return Number(
+                    item.fields.NumeroColaborador
+                ) === Number(numero)
+
+                &&
+
+                item.fields.PIN === pin
+
+                &&
+
+                item.fields.TipoLogin ===
+                    "LOCAL";
+
+            });
+
+        if(!utilizador){
+
+            alert("Credenciais inválidas");
+
+            return;
+
+        }
+
+        localStorage.setItem(
+            "userEmail",
+            "LOCAL_LOGIN"
+        );
+
+        localStorage.setItem(
+            "numeroLocal",
+            numero
+        );
+
+        window.location.href =
+            "dashboard.html";
+
+    }
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
