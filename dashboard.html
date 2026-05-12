@@ -320,10 +320,17 @@ catch(error){
 
 }
 
-carregarUtilizador();
+async function iniciarDashboard(){
 
-carregarKPIs();
-carregarRadar();
+    await carregarUtilizador();
+
+    await carregarKPIs();
+
+    await carregarRadar();
+
+}
+
+iniciarDashboard();
 </script>  
 <script>
 
