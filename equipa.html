@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Equipa</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div class="topbar">
+
+        <div class="logo-area">
+
+            <img
+                src="logo-monte-do-pasto.png"
+                class="app-logo"
+            >
+
+            <div>
+
+                <div class="logo-title">
+                    Monte do Pasto
+                </div>
+
+                <div class="logo-subtitle">
+                    Gestão Equipa
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="topbar-right">
+
+            <button
+                class="logout-btn"
+                onclick="window.location.href='dashboard.html'"
+            >
+                Dashboard
+            </button>
+
+            <button
+                class="logout-btn"
+                onclick="logout()"
+            >
+                Logout
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="team-page-card">
+
+        <div class="section-title">
+            Equipa
+        </div>
+
+        <div
+            class="team-page-grid"
+            id="teamGrid"
+        ></div>
+
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+
+<script>
+
+const msalConfig = {
+
+    auth:{
+
+        clientId: CONFIG.clientId,
+
+        authority:
+            `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+
+        redirectUri:
+            CONFIG.redirectUri
+
+    }
+
+};
+
+const msalInstance =
+    new msal.PublicClientApplication(msalConfig);
+
+async function renovarToken(){
+
+    try{
+
+        const account =
+            JSON.parse(
+                localStorage.getItem("account")
+            );
+
+        const tokenResponse =
+            await msalInstance.acquireTokenSilent({
+
+                scopes: CONFIG.scopes,
+
+                account: account
+
+            });
+
+        localStorage.setItem(
+            "accessToken",
+            tokenResponse.accessToken
+        );
+
+    }
+    catch(error){
+
+        localStorage.clear();
+
+        window.location.href =
+            "index.html";
+
+    }
+
+}
+
+function logout(){
+
+    localStorage.clear();
+
+    window.location.href =
+        "index.html";
+
+}
+
+async function carregarEquipa(){
+
+    try{
+
+        await renovarToken();
+
+        const token =
+            localStorage.getItem("accessToken");
+
+        const utilizadoresResponse =
+            await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
+
+                {
+                    headers:{
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+
+            );
+
+        const utilizadoresData =
+            await utilizadoresResponse.json();
+
+        let utilizadorAtual = null;
+
+        const tipoLogin =
+            localStorage.getItem("tipoLogin");
+
+        if(tipoLogin === "LOCAL"){
+
+            const numeroLocal =
+                Number(
+                    localStorage.getItem(
+                        "numeroLocal"
+                    )
+                );
+
+            utilizadorAtual =
+                utilizadoresData.value.find(item => {
+
+                    return Number(
+                        item.fields.NumeroColaborador
+                    ) === numeroLocal;
+
+                });
+
+        }
+        else{
+
+            const emailMicrosoft =
+                localStorage.getItem(
+                    "userEmail"
+                );
+
+            utilizadorAtual =
+                utilizadoresData.value.find(item => {
+
+                    return item.fields.EmailMicrosoft ===
+                        emailMicrosoft;
+
+                });
+
+        }
+
+        if(!utilizadorAtual){
+            return;
+        }
+
+        const utilizador =
+            utilizadorAtual.fields;
+
+        let equipa = [];
+
+        if(utilizador.TipoUtilizador === "ADMIN"){
+
+            equipa =
+                utilizadoresData.value;
+
+        }
+        else if(
+            utilizador.TipoUtilizador ===
+            "CHEFIA"
+        ){
+
+            equipa =
+                utilizadoresData.value.filter(item => {
+
+                    return Number(
+                        item.fields.ManagerID
+                    ) === Number(
+                        utilizador.NumeroColaborador
+                    );
+
+                });
+
+        }
+        else{
+
+            window.location.href =
+                "dashboard.html";
+
+            return;
+
+        }
+
+        const kpisResponse =
+            await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
+
+                {
+                    headers:{
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                }
+
+            );
+
+        const kpisData =
+            await kpisResponse.json();
+
+        const grid =
+            document.getElementById(
+                "teamGrid"
+            );
+
+        grid.innerHTML = "";
+
+        for(const item of equipa){
+
+            const colaborador =
+                item.fields;
+
+            const kpis =
+                kpisData.value.filter(kpi => {
+
+                    return Number(
+                        kpi.fields.ColaboradorID
+                    ) === Number(
+                        colaborador.NumeroColaborador
+                    );
+
+                });
+
+            let soma = 0;
+
+            kpis.forEach(kpi => {
+
+                soma += Number(
+                    kpi.fields.ValorAtual
+                ) || 0;
+
+            });
+
+            const score =
+                kpis.length > 0
+                ?
+                Math.round(
+                    soma / kpis.length
+                )
+                :
+                0;
+
+            let estado =
+                "Excelente";
+
+            if(score < 85){
+                estado = "Bom";
+            }
+
+            if(score < 70){
+                estado = "Atenção";
+            }
+
+            let foto =
+                "https://ui-avatars.com/api/?name=User&background=5f7752&color=fff";
+
+            if(colaborador.FotoPerfil){
+
+                foto =
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/${colaborador.FotoPerfil}:/content`;
+
+            }
+
+            const html = `
+
+                <div class="team-page-member">
+
+                    <img
+                        src="${foto}"
+                        class="team-photo"
+                    >
+
+                    <div class="team-member-name">
+                        ${colaborador.NomeColaborador}
+                    </div>
+
+                    <div class="team-member-role">
+                        ${colaborador.Funcao}
+                    </div>
+
+                    <div class="team-member-score">
+                        ${score}
+                    </div>
+
+                    <div class="team-member-status">
+                        ${estado}
+                    </div>
+
+                </div>
+
+            `;
+
+            grid.innerHTML += html;
+
+        }
+
+    }
+    catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+carregarEquipa();
+
+</script>
+
+</body>
+</html>
