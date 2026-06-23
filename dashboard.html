@@ -509,7 +509,11 @@ console.log("MODELO KPIS:", modeloKPIs);
         modeloKPIs.forEach(modelo => {
 
             const categoria =
-                modelo.CategoriaAvaliacao;
+    String(modelo.CategoriaAvaliacao || "")
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
 
             if(!grupos[categoria]){
                 return;
@@ -534,9 +538,16 @@ console.log("MODELO KPIS:", modeloKPIs);
             somaFinal += valor * peso;
             pesoFinal += peso;
 
-            document.getElementById(
-                grupos[categoria].containerId
-            ).innerHTML += `
+            const container =
+    document.getElementById(
+        grupos[categoria].containerId
+    );
+
+if(!container){
+    return;
+}
+
+container.innerHTML += `
 
                 <div class="category-kpi-row">
 
