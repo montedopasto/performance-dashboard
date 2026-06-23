@@ -417,34 +417,14 @@ async function carregarKPIs(){
         );
 
         const configData = await configResp.json();
-console.log("CONFIGURACAO FUNCOES RAW:", configData.value);
-console.log("PRIMEIRO REGISTO CONFIG:", configData.value[0].fields);
-console.log("FUNCAO COLABORADOR:", funcao);
+
         const modeloKPIs = configData.value
-    .map(item => item.fields)
-    .filter(item => {
-
-        const ativo =
-            item.Ativo === true
-            ||
-            item.Ativo === "Sim"
-            ||
-            item.Ativo === "SIM"
-            ||
-            item.Ativo === "Yes"
-            ||
-            item.Ativo === "1";
-
-        return item.NomeFuncao === funcao
-            &&
-            item.TipoConfiguracao === "KPI"
-            &&
-            ativo;
-
-    });
-
-console.log("FUNÇÃO:", funcao);
-console.log("MODELO KPIS:", modeloKPIs);
+            .map(item => item.fields)
+            .filter(item =>
+                item.NomeFuncao === funcao &&
+                item.TipoConfiguracao === "KPI" &&
+                (item.Ativo === true || item.Ativo === "Sim" || item.Ativo === "SIM")
+            );
 
         const histResp = await fetch(
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
@@ -471,6 +451,11 @@ console.log("MODELO KPIS:", modeloKPIs);
 
         const ultimaAvaliacaoID =
             historico.length > 0 ? historico[0].AvaliacaoID : "";
+
+        const dataUltimaAvaliacao =
+            historico.length > 0
+            ? new Date(historico[0].DataAtualizacao).toLocaleDateString("pt-PT")
+            : "";
 
         const ultimaAvaliacao =
             historico.filter(item =>
@@ -508,12 +493,28 @@ console.log("MODELO KPIS:", modeloKPIs);
 
         modeloKPIs.forEach(modelo => {
 
-            const categoria =
-    String(modelo.CategoriaAvaliacao || "")
-        .trim()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toUpperCase();
+            let categoria =
+                String(modelo.CategoriaAvaliacao || "")
+                    .trim()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toUpperCase();
+
+            const nomeNormalizado =
+                String(modelo.NomeReferencia || "")
+                    .trim()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toUpperCase();
+
+            const isResultadoTransversal =
+                nomeNormalizado.includes("EBITDA")
+                ||
+                nomeNormalizado.includes("WORKING CAPITAL");
+
+            if(categoria === "RESULTADOS" && !isResultadoTransversal){
+                categoria = "EXECUCAO";
+            }
 
             if(!grupos[categoria]){
                 return;
@@ -538,16 +539,9 @@ console.log("MODELO KPIS:", modeloKPIs);
             somaFinal += valor * peso;
             pesoFinal += peso;
 
-            const container =
-    document.getElementById(
-        grupos[categoria].containerId
-    );
-
-if(!container){
-    return;
-}
-
-container.innerHTML += `
+            document.getElementById(
+                grupos[categoria].containerId
+            ).innerHTML += `
 
                 <div class="category-kpi-row">
 
@@ -594,19 +588,10 @@ container.innerHTML += `
             ? "Performance consistente"
             : "Necessita atenção em KPIs críticos";
 
-        const dataUltimaAvaliacao =
-    historico.length > 0
-    ?
-    new Date(historico[0].DataAtualizacao).toLocaleDateString("pt-PT")
-    :
-    "";
-
-document.getElementById("summaryTrend").innerHTML =
-    dataUltimaAvaliacao
-    ?
-    `Última avaliação: ${dataUltimaAvaliacao}`
-    :
-    "Ainda sem avaliação registada";
+        document.getElementById("summaryTrend").innerHTML =
+            dataUltimaAvaliacao
+            ? `Última avaliação: ${dataUltimaAvaliacao}`
+            : "Ainda sem avaliação registada";
 
     }
     catch(error){
