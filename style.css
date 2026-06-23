@@ -720,3 +720,27 @@ body{
     width:300px !important;
     height:300px !important;
 }
+.softskills-panel{
+    grid-column:1 / 2;
+    display:grid;
+    grid-template-columns:1fr 180px;
+    gap:24px;
+    align-items:center;
+    min-height:230px;
+    padding:28px;
+}
+
+.softskills-panel h2{
+    font-size:24px;
+    margin-bottom:18px;
+}
+
+.radar-wrapper-small{
+    width:180px;
+    height:180px;
+}
+
+.radar-wrapper-small canvas{
+    width:180px !important;
+    height:180px !important;
+}
