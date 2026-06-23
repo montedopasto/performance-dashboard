@@ -419,12 +419,30 @@ async function carregarKPIs(){
         const configData = await configResp.json();
 
         const modeloKPIs = configData.value
-            .map(item => item.fields)
-            .filter(item =>
-                item.NomeFuncao === funcao &&
-                item.TipoConfiguracao === "KPI" &&
-                (item.Ativo === true || item.Ativo === "Sim")
-            );
+    .map(item => item.fields)
+    .filter(item => {
+
+        const ativo =
+            item.Ativo === true
+            ||
+            item.Ativo === "Sim"
+            ||
+            item.Ativo === "SIM"
+            ||
+            item.Ativo === "Yes"
+            ||
+            item.Ativo === "1";
+
+        return item.NomeFuncao === funcao
+            &&
+            item.TipoConfiguracao === "KPI"
+            &&
+            ativo;
+
+    });
+
+console.log("FUNÇÃO:", funcao);
+console.log("MODELO KPIS:", modeloKPIs);
 
         const histResp = await fetch(
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
