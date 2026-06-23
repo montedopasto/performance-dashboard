@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Avaliação</title>
+
+<link rel="stylesheet" href="style.css">
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div class="topbar">
+        <div class="logo-area">
+            <img src="logo-monte-do-pasto.png" class="app-logo">
+
+            <div>
+                <div class="logo-title">Monte do Pasto</div>
+                <div class="logo-subtitle">Nova Avaliação</div>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <button class="logout-btn" onclick="window.location.href='dashboard.html'">
+                Dashboard
+            </button>
+
+            <button class="logout-btn" onclick="window.location.href='equipa.html'">
+                Equipa
+            </button>
+        </div>
+    </div>
+
+    <div class="team-page-card">
+
+        <div class="section-title">
+            Criar Avaliação
+        </div>
+
+        <label class="form-label">
+            Colaborador
+        </label>
+
+        <select id="colaboradorSelect" class="form-select">
+            <option value="">A carregar colaboradores...</option>
+        </select>
+
+        <div id="avaliacaoForm"></div>
+
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+
+<script>
+console.log("Página de avaliação carregada");
+</script>
+
+</body>
+</html>
