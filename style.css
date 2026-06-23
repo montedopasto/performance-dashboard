@@ -519,3 +519,27 @@ body{
     border-color:#5f7752;
     box-shadow:0 0 0 4px rgba(95,119,82,0.15);
 }
+.eval-field{
+    margin-bottom:20px;
+}
+
+.eval-field label{
+    display:block;
+    font-weight:700;
+    margin-bottom:8px;
+}
+
+.eval-field label span{
+    display:block;
+    font-size:13px;
+    color:#6b7280;
+    margin-top:4px;
+}
+
+.eval-field input{
+    width:100%;
+    border:1px solid #d1d5db;
+    border-radius:14px;
+    padding:16px;
+    font-size:16px;
+}
