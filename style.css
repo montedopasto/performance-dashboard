@@ -678,10 +678,21 @@ body{
     }
 }
 .softskills-panel{
-    min-height:260px;
+    min-height:300px;
+    grid-template-columns:1fr 280px;
+    overflow:hidden;
+}
+
+.radar-wrapper-small{
+    width:280px;
+    height:260px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:visible;
 }
 
 .radar-wrapper-small canvas{
-    max-width:220px;
-    max-height:220px;
+    width:260px !important;
+    height:260px !important;
 }
