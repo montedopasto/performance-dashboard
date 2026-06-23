@@ -555,3 +555,122 @@ body{
     border-bottom:2px solid #e5e7eb;
     padding-bottom:10px;
 }
+.performance-layout{
+    margin-top:30px;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:24px;
+}
+
+.category-card,
+.softskills-panel{
+    background:white;
+    border-radius:26px;
+    padding:26px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.05);
+}
+
+.category-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:24px;
+}
+
+.category-header h2{
+    font-size:26px;
+    font-weight:800;
+}
+
+.category-header strong{
+    font-size:24px;
+    font-weight:800;
+}
+
+.category-weight{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:52px;
+    height:52px;
+    border-radius:50%;
+    background:#edf3ea;
+    color:#5f7752;
+    font-weight:800;
+    margin-bottom:10px;
+}
+
+.category-kpis{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+}
+
+.category-kpi-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:18px;
+    border-top:1px solid #edf0f2;
+    padding-top:14px;
+}
+
+.category-kpi-name{
+    font-size:16px;
+    color:#374151;
+    line-height:1.35;
+}
+
+.category-kpi-value{
+    min-width:54px;
+    text-align:center;
+    background:#5f7752;
+    color:white;
+    border-radius:999px;
+    padding:6px 12px;
+    font-weight:800;
+}
+
+.softskills-panel{
+    grid-column:1 / 2;
+    background:#26312c;
+    color:white;
+    display:grid;
+    grid-template-columns:1fr 220px;
+    gap:20px;
+    align-items:center;
+}
+
+.softskills-panel h2{
+    font-size:24px;
+    margin-bottom:18px;
+}
+
+.softskill-item{
+    display:flex;
+    justify-content:space-between;
+    padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    color:#e5e7eb;
+}
+
+.radar-wrapper-small{
+    width:220px;
+    height:220px;
+}
+
+@media(max-width:1000px){
+    .performance-layout{
+        grid-template-columns:1fr;
+    }
+
+    .softskills-panel{
+        grid-column:auto;
+        grid-template-columns:1fr;
+    }
+
+    .radar-wrapper-small{
+        width:100%;
+        height:280px;
+    }
+}
