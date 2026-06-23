@@ -520,10 +520,28 @@ async function carregarKPIs(){
                 return;
             }
 
-            const historicoKPI =
-                ultimaAvaliacao.find(item =>
-                    Number(item.KPIID) === Number(modelo.ReferenciaID)
-                );
+            const nomeModeloNormalizado =
+    String(modelo.NomeReferencia || "")
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
+
+const historicoKPI =
+    ultimaAvaliacao.find(item => {
+
+        const nomeHistoricoNormalizado =
+            String(item.NomeKPI || "")
+                .trim()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase();
+
+        return Number(item.KPIID) === Number(modelo.ReferenciaID)
+            ||
+            nomeHistoricoNormalizado === nomeModeloNormalizado;
+
+    });
 
             const valor =
                 historicoKPI
