@@ -399,236 +399,174 @@ async function carregarKPIs(){
 
     try{
 
-        const token =
-            localStorage.getItem("accessToken");
+        const token = localStorage.getItem("accessToken");
 
         const colaboradorID =
-            Number(
-                window.colaboradorAtual.NumeroColaborador
-            );
+            Number(window.colaboradorAtual.NumeroColaborador);
 
         const funcao =
             window.colaboradorAtual.Funcao;
 
-        const configResp =
-            await fetch(
-
+        const configResp = await fetch(
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/ConfiguracaoFuncoes/items?$expand=fields`,
-
-                {
-                    headers:{
-                        Authorization:`Bearer ${token}`
-                    }
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
                 }
+            }
+        );
 
+        const configData = await configResp.json();
+
+        const modeloKPIs = configData.value
+            .map(item => item.fields)
+            .filter(item =>
+                item.NomeFuncao === funcao &&
+                item.TipoConfiguracao === "KPI" &&
+                (item.Ativo === true || item.Ativo === "Sim")
             );
 
-        const configData =
-            await configResp.json();
-
-        const modeloKPIs =
-            configData.value
-                .map(item => item.fields)
-                .filter(item => {
-
-                    return item.NomeFuncao === funcao
-                    &&
-                    item.TipoConfiguracao === "KPI"
-                    &&
-                    item.Ativo === true;
-
-                })
-                .sort((a,b) => {
-
-                    return Number(a.OrdemVisual) -
-                        Number(b.OrdemVisual);
-
-                });
-
-        const historicoResp =
-            await fetch(
-
+        const histResp = await fetch(
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
-
-                {
-                    headers:{
-                        Authorization:`Bearer ${token}`
-                    }
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
                 }
+            }
+        );
 
+        const histData = await histResp.json();
+
+        const historico = histData.value
+            .map(item => item.fields)
+            .filter(item =>
+                Number(item.ColaboradorID) === colaboradorID &&
+                item.SnapshotOficial === true &&
+                item.AvaliacaoID
             );
 
-        const historicoData =
-            await historicoResp.json();
+        historico.sort((a,b) =>
+            new Date(b.DataAtualizacao) - new Date(a.DataAtualizacao)
+        );
 
-        const historicoColaborador =
-            historicoData.value
-                .map(item => item.fields)
-                .filter(item => {
+        const ultimaAvaliacaoID =
+            historico.length > 0 ? historico[0].AvaliacaoID : "";
 
-                    return Number(item.ColaboradorID) === colaboradorID
-                    &&
-                    item.SnapshotOficial === true
-                    &&
-                    item.AvaliacaoID;
+        const ultimaAvaliacao =
+            historico.filter(item =>
+                item.AvaliacaoID === ultimaAvaliacaoID
+            );
 
-                });
+        const grupos = {
+            RESULTADOS:{
+                scoreId:"resultadosScore",
+                containerId:"resultadosKPIs",
+                soma:0,
+                peso:0
+            },
+            EXECUCAO:{
+                scoreId:"execucaoScore",
+                containerId:"execucaoKPIs",
+                soma:0,
+                peso:0
+            },
+            ESTRATEGICO:{
+                scoreId:"estrategicoScore",
+                containerId:"estrategicoKPIs",
+                soma:0,
+                peso:0
+            }
+        };
 
-        let ultimaAvaliacaoID = "";
+        Object.values(grupos).forEach(grupo => {
+            document.getElementById(grupo.containerId).innerHTML = "";
+            document.getElementById(grupo.scoreId).innerHTML = "0/100";
+        });
 
-        if(historicoColaborador.length > 0){
+        let somaFinal = 0;
+        let pesoFinal = 0;
 
-            historicoColaborador.sort((a,b) => {
+        modeloKPIs.forEach(modelo => {
 
-                return new Date(b.DataAtualizacao) -
-                    new Date(a.DataAtualizacao);
+            const categoria =
+                modelo.CategoriaAvaliacao;
 
-            });
+            if(!grupos[categoria]){
+                return;
+            }
 
-            ultimaAvaliacaoID =
-                historicoColaborador[0].AvaliacaoID;
+            const historicoKPI =
+                ultimaAvaliacao.find(item =>
+                    Number(item.KPIID) === Number(modelo.ReferenciaID)
+                );
 
-        }
-
-        const historicoUltima =
-            historicoColaborador.filter(item => {
-
-                return item.AvaliacaoID ===
-                    ultimaAvaliacaoID;
-
-            });
-
-        const grid =
-            document.getElementById("kpiGrid");
-
-        grid.innerHTML = "";
-
-        let somaPonderada = 0;
-        let somaPesos = 0;
-
-        modeloKPIs.forEach(kpiModelo => {
-
-            const historico =
-                historicoUltima.find(item => {
-
-                    return Number(item.KPIID) ===
-                        Number(kpiModelo.ReferenciaID);
-
-                });
-
-            const valorReal =
-                historico
-                ?
-                Number(historico.ValorAtual) || 0
-                :
-                0;
-
-            const metaReal =
-                Number(kpiModelo.MetaDefault) || 0;
+            const valor =
+                historicoKPI
+                ? Number(historicoKPI.ValorAtual) || 0
+                : 0;
 
             const peso =
-                Number(kpiModelo.Peso) || 0;
+                Number(modelo.Peso) || 0;
 
-            let corEstado =
-                historico?.CorEstado || "AMARELO";
+            grupos[categoria].soma += valor * peso;
+            grupos[categoria].peso += peso;
 
-            let estadoClasse =
-                "warning";
+            somaFinal += valor * peso;
+            pesoFinal += peso;
 
-            if(corEstado === "VERDE"){
-                estadoClasse = "positive";
-            }
+            document.getElementById(
+                grupos[categoria].containerId
+            ).innerHTML += `
 
-            if(corEstado === "VERMELHO"){
-                estadoClasse = "negative";
-            }
+                <div class="category-kpi-row">
 
-            somaPonderada +=
-                valorReal * peso;
-
-            somaPesos +=
-                peso;
-
-            const html = `
-
-                <div class="kpi-card ${estadoClasse}">
-
-                    <div class="kpi-top">
-
-                        <div>
-
-                            <div class="kpi-title">
-                                ${kpiModelo.NomeReferencia}
-                            </div>
-
-                            <div class="kpi-target">
-                                ${kpiModelo.CategoriaAvaliacao} · Meta: ${metaReal} · Peso: ${peso}%
-                            </div>
-
-                        </div>
-
-                        <div class="kpi-status">
-                            ${historico?.Tendencia === "SUBIDA" ? "↑" : ""}
-                            ${historico?.Tendencia === "DESCIDA" ? "↓" : ""}
-                            ${!historico || historico?.Tendencia === "ESTAVEL" ? "•" : ""}
-                        </div>
-
+                    <div class="category-kpi-name">
+                        ${modelo.NomeReferencia}
                     </div>
 
-                    <div class="kpi-value">
-                        ${valorReal}
-                    </div>
-
-                    <div class="sparkline">
-
-                        <div
-                            class="spark-fill"
-                            style="width:${valorReal}%"
-                        ></div>
-
+                    <div class="category-kpi-value">
+                        ${valor}
                     </div>
 
                 </div>
 
             `;
 
-            grid.innerHTML += html;
+        });
+
+        Object.keys(grupos).forEach(categoria => {
+
+            const grupo = grupos[categoria];
+
+            const score =
+                grupo.peso > 0
+                ? Math.round(grupo.soma / grupo.peso)
+                : 0;
+
+            document.getElementById(grupo.scoreId).innerHTML =
+                `${score}/100`;
 
         });
 
         const overall =
-            somaPesos > 0
-            ?
-            Math.round(
-                somaPonderada / somaPesos
-            )
-            :
-            0;
+            pesoFinal > 0
+            ? Math.round(somaFinal / pesoFinal)
+            : 0;
 
         document.getElementById("overallScore").innerHTML =
             overall;
 
-        let mensagem = "";
-
-        if(overall >= 85){
-            mensagem = "Performance global excelente";
-        }
-        else if(overall >= 70){
-            mensagem = "Performance consistente";
-        }
-        else{
-            mensagem = "Necessita atenção em KPIs críticos";
-        }
-
         document.getElementById("summaryMessage").innerHTML =
-            mensagem;
+            overall >= 85
+            ? "Performance global excelente"
+            : overall >= 70
+            ? "Performance consistente"
+            : "Necessita atenção em KPIs críticos";
 
         document.getElementById("summaryTrend").innerHTML =
             ultimaAvaliacaoID
-            ?
-            `Última avaliação: ${ultimaAvaliacaoID}`
-            :
-            "Ainda sem avaliação registada";
+            ? `Última avaliação: ${ultimaAvaliacaoID}`
+            : "Ainda sem avaliação registada";
 
     }
     catch(error){
