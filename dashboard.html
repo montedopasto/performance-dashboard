@@ -594,10 +594,19 @@ container.innerHTML += `
             ? "Performance consistente"
             : "Necessita atenção em KPIs críticos";
 
-        document.getElementById("summaryTrend").innerHTML =
-            ultimaAvaliacaoID
-            ? `Última avaliação: ${ultimaAvaliacaoID}`
-            : "Ainda sem avaliação registada";
+        const dataUltimaAvaliacao =
+    historico.length > 0
+    ?
+    new Date(historico[0].DataAtualizacao).toLocaleDateString("pt-PT")
+    :
+    "";
+
+document.getElementById("summaryTrend").innerHTML =
+    dataUltimaAvaliacao
+    ?
+    `Última avaliação: ${dataUltimaAvaliacao}`
+    :
+    "Ainda sem avaliação registada";
 
     }
     catch(error){
