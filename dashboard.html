@@ -609,7 +609,9 @@ async function carregarRadar(){
             localStorage.getItem("accessToken");
 
         const colaboradorID =
-    Number(window.colaboradorAtual.NumeroColaborador);
+            Number(
+                window.colaboradorAtual.NumeroColaborador
+            );
 
         const response = await fetch(
 
@@ -623,13 +625,48 @@ async function carregarRadar(){
 
         );
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
-        const skills =
+        const historicoColaborador =
             data.value.filter(item => {
 
-                return item.fields.ColaboradorID ==
-                    colaboradorID;
+                return Number(
+                    item.fields.ColaboradorID
+                ) === colaboradorID
+
+                &&
+
+                item.fields.SnapshotOficial === true;
+
+            });
+
+        if(historicoColaborador.length === 0){
+
+            return;
+
+        }
+
+        historicoColaborador.sort((a,b) => {
+
+            return new Date(
+                b.fields.DataAtualizacao
+            )
+            -
+            new Date(
+                a.fields.DataAtualizacao
+            );
+
+        });
+
+        const ultimaAvaliacaoID =
+            historicoColaborador[0].fields.AvaliacaoID;
+
+        const skills =
+            historicoColaborador.filter(item => {
+
+                return item.fields.AvaliacaoID ===
+                    ultimaAvaliacaoID;
 
             });
 
@@ -640,11 +677,13 @@ async function carregarRadar(){
 
         const valores =
             skills.map(item =>
-                item.fields.ValorAtual
+                Number(item.fields.ValorAtual) || 0
             );
 
         const radarCtx =
-            document.getElementById('radarChart');
+            document.getElementById(
+                "radarChart"
+            );
 
         if(radarChart){
             radarChart.destroy();
@@ -652,7 +691,7 @@ async function carregarRadar(){
 
         radarChart = new Chart(radarCtx, {
 
-            type:'radar',
+            type:"radar",
 
             data:{
 
@@ -660,17 +699,20 @@ async function carregarRadar(){
 
                 datasets:[{
 
-                    label:'Soft Skills',
+                    label:"Soft Skills",
 
                     data:valores,
 
-                    backgroundColor:'rgba(95,119,82,0.2)',
+                    backgroundColor:
+                        "rgba(95,119,82,0.2)",
 
-                    borderColor:'#5f7752',
+                    borderColor:
+                        "#5f7752",
 
                     borderWidth:3,
 
-                    pointBackgroundColor:'#5f7752',
+                    pointBackgroundColor:
+                        "#5f7752",
 
                     pointRadius:4
 
@@ -700,18 +742,19 @@ async function carregarRadar(){
                         },
 
                         grid:{
-                            color:'#e5e7eb'
+                            color:"#e5e7eb"
                         },
 
                         angleLines:{
-                            color:'#e5e7eb'
+                            color:"#e5e7eb"
                         },
 
                         pointLabels:{
-                            color:'#374151',
+                            color:"#374151",
+
                             font:{
                                 size:14,
-                                weight:'600'
+                                weight:"600"
                             }
                         }
                     }
