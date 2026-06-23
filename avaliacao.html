@@ -293,9 +293,151 @@ document
 carregarColaboradores();
 async function guardarAvaliacao(){
 
-    alert(
-        "Guardar avaliação será o próximo passo."
-    );
+    try{
+
+        const token =
+            localStorage.getItem("accessToken");
+
+        const numeroColaborador =
+            document.getElementById("colaboradorSelect").value;
+
+        if(!numeroColaborador){
+            alert("Seleciona um colaborador.");
+            return;
+        }
+
+        const utilizadoresResp = await fetch(
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
+            {
+                headers:{
+                    Authorization:`Bearer ${token}`
+                }
+            }
+        );
+
+        const utilizadoresData =
+            await utilizadoresResp.json();
+
+        const colaboradorItem =
+            utilizadoresData.value.find(item =>
+                Number(item.fields.NumeroColaborador) === Number(numeroColaborador)
+            );
+
+        const colaborador =
+            colaboradorItem.fields;
+
+        const avaliacaoID =
+            "AV-" + new Date().toISOString().replace(/[-:.TZ]/g,"");
+
+        const inputs =
+            document.querySelectorAll("#avaliacaoForm input");
+
+        for(const input of inputs){
+
+            const tipo =
+                input.dataset.tipo;
+
+            const valor =
+                Number(input.value) || 0;
+
+            const peso =
+                Number(input.dataset.peso) || 0;
+
+            const meta =
+                Number(input.dataset.meta) || 0;
+
+            const nome =
+                input.dataset.nome;
+
+            const referenciaID =
+                Number(input.dataset.referencia);
+
+            let corEstado = "AMARELO";
+
+            if(valor >= meta){
+                corEstado = "VERDE";
+            }
+
+            if(valor < meta * 0.8){
+                corEstado = "VERMELHO";
+            }
+
+            if(tipo === "KPI"){
+
+                await fetch(
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items`,
+                    {
+                        method:"POST",
+                        headers:{
+                            Authorization:`Bearer ${token}`,
+                            "Content-Type":"application/json"
+                        },
+                        body:JSON.stringify({
+                            fields:{
+                                Title:avaliacaoID + "-" + nome,
+                                ColaboradorID:Number(colaborador.NumeroColaborador),
+                                NomeColaborador:colaborador.NomeColaborador,
+                                Funcao:colaborador.Funcao,
+                                KPIID:referenciaID,
+                                NomeKPI:nome,
+                                ValorAtual:valor,
+                                Meta:meta,
+                                PesoKPI:peso,
+                                Tendencia:"ESTAVEL",
+                                CorEstado:corEstado,
+                                AtualizadoPor:localStorage.getItem("userEmail") || "LOCAL",
+                                DataAtualizacao:new Date().toISOString(),
+                                SnapshotOficial:true,
+                                AvaliacaoID:avaliacaoID
+                            }
+                        })
+                    }
+                );
+
+            }
+
+            if(tipo === "SOFTSKILL"){
+
+                await fetch(
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoSoftSkills/items`,
+                    {
+                        method:"POST",
+                        headers:{
+                            Authorization:`Bearer ${token}`,
+                            "Content-Type":"application/json"
+                        },
+                        body:JSON.stringify({
+                            fields:{
+                                Title:avaliacaoID + "-" + nome,
+                                ColaboradorID:Number(colaborador.NumeroColaborador),
+                                NomeColaborador:colaborador.NomeColaborador,
+                                SkillID:referenciaID,
+                                NomeSkill:nome,
+                                ValorAtual:valor,
+                                PesoSkill:peso,
+                                CorEstado:corEstado,
+                                AtualizadoPor:localStorage.getItem("userEmail") || "LOCAL",
+                                DataAtualizacao:new Date().toISOString(),
+                                SnapshotOficial:true,
+                                AvaliacaoID:avaliacaoID
+                            }
+                        })
+                    }
+                );
+
+            }
+
+        }
+
+        alert("Avaliação guardada com sucesso.");
+
+    }
+    catch(error){
+
+        console.error(error);
+        alert("Erro ao guardar avaliação.");
+
+    }
 
 }
 </script>
