@@ -696,3 +696,27 @@ body{
     width:260px !important;
     height:260px !important;
 }
+.softskills-panel{
+    grid-column:1 / 2;
+    display:block;
+    min-height:auto;
+    padding:34px;
+}
+
+.softskills-panel h2{
+    margin-bottom:28px;
+}
+
+.radar-wrapper-small{
+    width:100%;
+    height:300px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:visible;
+}
+
+.radar-wrapper-small canvas{
+    width:300px !important;
+    height:300px !important;
+}
