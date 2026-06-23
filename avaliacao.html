@@ -122,6 +122,97 @@ async function carregarColaboradores(){
     }
 
 }
+async function carregarModeloAvaliacao(){
+
+    const numeroColaborador =
+        document.getElementById("colaboradorSelect").value;
+
+    if(!numeroColaborador){
+        return;
+    }
+
+    const token =
+        localStorage.getItem("accessToken");
+
+    const utilizadoresResp = await fetch(
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
+        {
+            headers:{
+                Authorization:`Bearer ${token}`
+            }
+        }
+    );
+
+    const utilizadoresData =
+        await utilizadoresResp.json();
+
+    const colaborador =
+        utilizadoresData.value.find(item =>
+            Number(item.fields.NumeroColaborador) === Number(numeroColaborador)
+        ).fields;
+
+    const configResp = await fetch(
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/ConfiguracaoFuncoes/items?$expand=fields`,
+        {
+            headers:{
+                Authorization:`Bearer ${token}`
+            }
+        }
+    );
+
+    const configData =
+        await configResp.json();
+
+    const modelo =
+        configData.value.filter(item =>
+            item.fields.NomeFuncao === colaborador.Funcao &&
+            item.fields.Ativo === true
+        );
+
+    const form =
+        document.getElementById("avaliacaoForm");
+
+    form.innerHTML = "";
+
+    modelo.forEach(item => {
+
+        const campo =
+            item.fields;
+
+        form.innerHTML += `
+
+            <div class="eval-field">
+
+                <label>
+                    ${campo.NomeReferencia}
+                    <span>${campo.TipoConfiguracao} · ${campo.CategoriaAvaliacao}</span>
+                </label>
+
+                <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="0"
+                    data-tipo="${campo.TipoConfiguracao}"
+                    data-referencia="${campo.ReferenciaID}"
+                    data-nome="${campo.NomeReferencia}"
+                    data-peso="${campo.Peso}"
+                    data-meta="${campo.MetaDefault}"
+                >
+
+            </div>
+
+        `;
+
+    });
+
+}
+document
+    .getElementById("colaboradorSelect")
+    .addEventListener(
+        "change",
+        carregarModeloAvaliacao
+    );
 
 carregarColaboradores();
 
