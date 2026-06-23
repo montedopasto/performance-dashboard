@@ -169,23 +169,90 @@ async function carregarModeloAvaliacao(){
             item.fields.Ativo === true
         );
 
-    const form =
-        document.getElementById("avaliacaoForm");
+  const form =
+    document.getElementById("avaliacaoForm");
 
-    form.innerHTML = "";
+form.innerHTML = "";
 
-    modelo.forEach(item => {
+const grupos = {
 
-        const campo =
-            item.fields;
+    RESULTADOS: [],
+    EXECUCAO: [],
+    ESTRATEGICO: [],
+    SOFTSKILLS: []
+
+};
+
+modelo.forEach(item => {
+
+    const campo =
+        item.fields;
+
+    if(
+        campo.TipoConfiguracao ===
+        "SOFTSKILL"
+    ){
+
+        grupos.SOFTSKILLS.push(campo);
+
+    }
+    else{
+
+        grupos[
+            campo.CategoriaAvaliacao
+        ].push(campo);
+
+    }
+
+});
+
+Object.keys(grupos).forEach(grupo => {
+
+    if(grupos[grupo].length === 0){
+        return;
+    }
+
+    let titulo = grupo;
+
+    if(grupo === "EXECUCAO"){
+        titulo = "EXECUÇÃO";
+    }
+
+    if(grupo === "ESTRATEGICO"){
+        titulo = "ESTRATÉGICO";
+    }
+
+    if(grupo === "SOFTSKILLS"){
+        titulo = "SOFT SKILLS";
+    }
+
+    form.innerHTML += `
+
+        <div class="categoria-avaliacao">
+
+            <h3>${titulo}</h3>
+
+        </div>
+
+    `;
+
+    grupos[grupo].forEach(campo => {
 
         form.innerHTML += `
 
             <div class="eval-field">
 
                 <label>
+
                     ${campo.NomeReferencia}
-                    <span>${campo.TipoConfiguracao} · ${campo.CategoriaAvaliacao}</span>
+
+                    <span>
+
+                        Peso:
+                        ${campo.Peso}%
+
+                    </span>
+
                 </label>
 
                 <input
@@ -205,6 +272,8 @@ async function carregarModeloAvaliacao(){
         `;
 
     });
+
+});
 
 }
 document
