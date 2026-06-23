@@ -100,23 +100,58 @@
         </div>
 
     </div>
-<div class="kpi-grid" id="kpiGrid"></div>
- 
-<div class="bottom-grid">
+<div class="performance-layout">
 
-    <div class="radar-card">
-
-        <div class="section-title">
-            Soft Skills
+    <div class="category-card" id="resultadosCard">
+        <div class="category-header">
+            <div>
+                <span class="category-weight">40%</span>
+                <h2>Resultados</h2>
+            </div>
+            <strong id="resultadosScore">0/100</strong>
         </div>
 
-        <div class="radar-wrapper">
-    <canvas id="radarChart"></canvas>
-</div>
+        <div class="category-kpis" id="resultadosKPIs"></div>
+    </div>
+
+    <div class="category-card" id="execucaoCard">
+        <div class="category-header">
+            <div>
+                <span class="category-weight">30%</span>
+                <h2>Execução</h2>
+            </div>
+            <strong id="execucaoScore">0/100</strong>
+        </div>
+
+        <div class="category-kpis" id="execucaoKPIs"></div>
+    </div>
+
+    <div class="category-card" id="estrategicoCard">
+        <div class="category-header">
+            <div>
+                <span class="category-weight">30%</span>
+                <h2>Estratégico</h2>
+            </div>
+            <strong id="estrategicoScore">0/100</strong>
+        </div>
+
+        <div class="category-kpis" id="estrategicoKPIs"></div>
+    </div>
+
+    <div class="softskills-panel">
+
+        <div>
+            <h2>Soft skills essenciais</h2>
+            <div id="softSkillsList"></div>
+        </div>
+
+        <div class="radar-wrapper-small">
+            <canvas id="radarChart"></canvas>
+        </div>
 
     </div>
 
-</div>    
+</div>
 </div>
 <script src="config.js"></script>
 <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>    
