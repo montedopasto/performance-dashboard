@@ -677,3 +677,11 @@ body{
         height:280px;
     }
 }
+.softskills-panel{
+    min-height:260px;
+}
+
+.radar-wrapper-small canvas{
+    max-width:220px;
+    max-height:220px;
+}
