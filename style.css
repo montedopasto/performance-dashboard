@@ -53,16 +53,17 @@ body{
 .summary-card{
     background:white;
     border-radius:30px;
-    padding:35px;
+    padding:28px 36px;
     display:flex;
-    gap:30px;
+    gap:28px;
     align-items:center;
     box-shadow:0 10px 40px rgba(0,0,0,0.05);
+    min-height:210px;
 }
 
 .profile-image{
-    width:140px;
-    height:140px;
+    width:120px;
+    height:120px;
     border-radius:50%;
     object-fit:cover;
 }
@@ -73,11 +74,10 @@ body{
     margin-bottom:10px;
 }
 
-.summary-score{
-    font-size:88px;
+.summary-role{
+    font-size:34px;
     font-weight:800;
-    color:#5f7752;
-    line-height:1;
+    margin-bottom:14px;
 }
 
 .summary-score span{
@@ -111,8 +111,11 @@ body{
     }
 
     .summary-score{
-        font-size:64px;
-    }
+    font-size:46px;
+    font-weight:800;
+    color:#5f7752;
+    line-height:1;
+}
 
     .summary-message{
         font-size:18px;
