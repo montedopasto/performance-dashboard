@@ -543,3 +543,15 @@ body{
     padding:16px;
     font-size:16px;
 }
+.categoria-avaliacao{
+    margin-top:35px;
+    margin-bottom:20px;
+}
+
+.categoria-avaliacao h3{
+    font-size:22px;
+    font-weight:800;
+    color:#5f7752;
+    border-bottom:2px solid #e5e7eb;
+    padding-bottom:10px;
+}
