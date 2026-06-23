@@ -417,7 +417,9 @@ async function carregarKPIs(){
         );
 
         const configData = await configResp.json();
-
+console.log("CONFIGURACAO FUNCOES RAW:", configData.value);
+console.log("PRIMEIRO REGISTO CONFIG:", configData.value[0].fields);
+console.log("FUNCAO COLABORADOR:", funcao);
         const modeloKPIs = configData.value
     .map(item => item.fields)
     .filter(item => {
