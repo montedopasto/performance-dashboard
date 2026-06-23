@@ -372,71 +372,93 @@ async function carregarKPIs(){
                 window.colaboradorAtual.NumeroColaborador
             );
 
-        const response = await fetch(
+        const funcao =
+            window.colaboradorAtual.Funcao;
+
+        const configResp =
+            await fetch(
+
+`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/ConfiguracaoFuncoes/items?$expand=fields`,
+
+                {
+                    headers:{
+                        Authorization:`Bearer ${token}`
+                    }
+                }
+
+            );
+
+        const configData =
+            await configResp.json();
+
+        const modeloKPIs =
+            configData.value
+                .map(item => item.fields)
+                .filter(item => {
+
+                    return item.NomeFuncao === funcao
+                    &&
+                    item.TipoConfiguracao === "KPI"
+                    &&
+                    item.Ativo === true;
+
+                })
+                .sort((a,b) => {
+
+                    return Number(a.OrdemVisual) -
+                        Number(b.OrdemVisual);
+
+                });
+
+        const historicoResp =
+            await fetch(
 
 `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/HistoricoKPIs/items?$expand=fields`,
 
-            {
-                headers:{
-                    Authorization:`Bearer ${token}`
+                {
+                    headers:{
+                        Authorization:`Bearer ${token}`
+                    }
                 }
-            }
 
-        );
+            );
 
-        const data =
-            await response.json();
+        const historicoData =
+            await historicoResp.json();
 
         const historicoColaborador =
-            data.value.filter(item => {
+            historicoData.value
+                .map(item => item.fields)
+                .filter(item => {
 
-                return Number(
-                    item.fields.ColaboradorID
-                ) === colaboradorID
+                    return Number(item.ColaboradorID) === colaboradorID
+                    &&
+                    item.SnapshotOficial === true
+                    &&
+                    item.AvaliacaoID;
 
-                &&
+                });
 
-                item.fields.SnapshotOficial === true;
+        let ultimaAvaliacaoID = "";
+
+        if(historicoColaborador.length > 0){
+
+            historicoColaborador.sort((a,b) => {
+
+                return new Date(b.DataAtualizacao) -
+                    new Date(a.DataAtualizacao);
 
             });
 
-        if(historicoColaborador.length === 0){
-
-            document.getElementById("kpiGrid").innerHTML =
-                "";
-
-            document.getElementById("overallScore").innerHTML =
-                "0";
-
-            document.getElementById("summaryMessage").innerHTML =
-                "Ainda sem avaliação registada";
-
-            document.getElementById("summaryTrend").innerHTML =
-                "";
-
-            return;
+            ultimaAvaliacaoID =
+                historicoColaborador[0].AvaliacaoID;
 
         }
 
-        historicoColaborador.sort((a,b) => {
-
-            return new Date(
-                b.fields.DataAtualizacao
-            )
-            -
-            new Date(
-                a.fields.DataAtualizacao
-            );
-
-        });
-
-        const ultimaAvaliacaoID =
-            historicoColaborador[0].fields.AvaliacaoID;
-
-        const ultimaAvaliacao =
+        const historicoUltima =
             historicoColaborador.filter(item => {
 
-                return item.fields.AvaliacaoID ===
+                return item.AvaliacaoID ===
                     ultimaAvaliacaoID;
 
             });
@@ -449,30 +471,42 @@ async function carregarKPIs(){
         let somaPonderada = 0;
         let somaPesos = 0;
 
-        ultimaAvaliacao.forEach(item => {
+        modeloKPIs.forEach(kpiModelo => {
 
-            const kpi =
-                item.fields;
+            const historico =
+                historicoUltima.find(item => {
 
-            let estadoClasse =
-                "positive";
+                    return Number(item.KPIID) ===
+                        Number(kpiModelo.ReferenciaID);
 
-            if(kpi.CorEstado === "AMARELO"){
-                estadoClasse = "warning";
-            }
-
-            if(kpi.CorEstado === "VERMELHO"){
-                estadoClasse = "negative";
-            }
+                });
 
             const valorReal =
-                Number(kpi.ValorAtual) || 0;
+                historico
+                ?
+                Number(historico.ValorAtual) || 0
+                :
+                0;
 
             const metaReal =
-                Number(kpi.Meta) || 0;
+                Number(kpiModelo.MetaDefault) || 0;
 
             const peso =
-                Number(kpi.PesoKPI) || 0;
+                Number(kpiModelo.Peso) || 0;
+
+            let corEstado =
+                historico?.CorEstado || "AMARELO";
+
+            let estadoClasse =
+                "warning";
+
+            if(corEstado === "VERDE"){
+                estadoClasse = "positive";
+            }
+
+            if(corEstado === "VERMELHO"){
+                estadoClasse = "negative";
+            }
 
             somaPonderada +=
                 valorReal * peso;
@@ -489,19 +523,19 @@ async function carregarKPIs(){
                         <div>
 
                             <div class="kpi-title">
-                                ${kpi.NomeKPI}
+                                ${kpiModelo.NomeReferencia}
                             </div>
 
                             <div class="kpi-target">
-                                Meta: ${metaReal} · Peso: ${peso}%
+                                ${kpiModelo.CategoriaAvaliacao} · Meta: ${metaReal} · Peso: ${peso}%
                             </div>
 
                         </div>
 
                         <div class="kpi-status">
-                            ${kpi.Tendencia === "SUBIDA" ? "↑" : ""}
-                            ${kpi.Tendencia === "DESCIDA" ? "↓" : ""}
-                            ${kpi.Tendencia === "ESTAVEL" ? "•" : ""}
+                            ${historico?.Tendencia === "SUBIDA" ? "↑" : ""}
+                            ${historico?.Tendencia === "DESCIDA" ? "↓" : ""}
+                            ${!historico || historico?.Tendencia === "ESTAVEL" ? "•" : ""}
                         </div>
 
                     </div>
@@ -539,33 +573,27 @@ async function carregarKPIs(){
         document.getElementById("overallScore").innerHTML =
             overall;
 
-        let mensagem =
-            "";
+        let mensagem = "";
 
         if(overall >= 85){
-
-            mensagem =
-                "Performance global excelente";
-
+            mensagem = "Performance global excelente";
         }
         else if(overall >= 70){
-
-            mensagem =
-                "Performance consistente";
-
+            mensagem = "Performance consistente";
         }
         else{
-
-            mensagem =
-                "Necessita atenção em KPIs críticos";
-
+            mensagem = "Necessita atenção em KPIs críticos";
         }
 
         document.getElementById("summaryMessage").innerHTML =
             mensagem;
 
         document.getElementById("summaryTrend").innerHTML =
-            `Última avaliação: ${ultimaAvaliacaoID}`;
+            ultimaAvaliacaoID
+            ?
+            `Última avaliação: ${ultimaAvaliacaoID}`
+            :
+            "Ainda sem avaliação registada";
 
     }
     catch(error){
