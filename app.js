@@ -25,6 +25,8 @@ async function login(){
 
     try{
 
+        localStorage.removeItem('tipoLogin');
+        localStorage.removeItem('numeroLocal');
         const loginResponse =
             await msalInstance.loginPopup({
 
@@ -68,109 +70,12 @@ async function login(){
     }
 
 }
-async function loginLocal(){
-
-    try{
-
-        const numero =
-            document.getElementById(
-                "numeroColaborador"
-            ).value;
-
-        const pin =
-            document.getElementById(
-                "pinColaborador"
-            ).value;
-
-        const loginResponse =
-            await msalInstance.loginPopup({
-
-                scopes: CONFIG.scopes
-
-            });
-
-        const tokenResponse =
-            await msalInstance.acquireTokenSilent({
-
-                scopes: CONFIG.scopes,
-
-                account:
-                    loginResponse.account
-
-            });
-
-        localStorage.setItem(
-            "accessToken",
-            tokenResponse.accessToken
-        );
-
-        localStorage.setItem(
-            "account",
-            JSON.stringify(loginResponse.account)
-        );
-
-        const response = await fetch(
-
-`https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/UtilizadoresDashboard/items?$expand=fields`,
-
-            {
-                headers:{
-                    Authorization:
-                        `Bearer ${
-                            tokenResponse.accessToken
-                        }`
-                }
-            }
-
-        );
-
-        const data =
-            await response.json();
-
-        const utilizador =
-            data.value.find(item => {
-
-                return Number(
-                    item.fields.NumeroColaborador
-                ) === Number(numero)
-
-                &&
-
-                item.fields.PIN === pin
-
-                &&
-
-                item.fields.TipoLogin ===
-                    "LOCAL";
-
-            });
-
-        if(!utilizador){
-
-            alert("Credenciais inválidas");
-
-            return;
-
-        }
-
-        localStorage.setItem(
-            "numeroLocal",
-            numero
-        );
-
-        localStorage.setItem(
-            "tipoLogin",
-            "LOCAL"
-        );
-
-        window.location.href =
-            "dashboard.html";
-
+function loginLocal(){
+    try {
+        const url = new URL(CONFIG.localPortalUrl);
+        if (url.origin !== 'https://script.google.com' || !url.pathname.endsWith('/exec')) throw Error('invalid');
+        window.location.assign(url.href);
+    } catch {
+        document.getElementById('status').textContent = 'O acesso dos colaboradores ainda não está disponível. Contacte a administração.';
     }
-    catch(error){
-
-        console.error(error);
-
-    }
-
 }

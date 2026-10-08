@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Performance Dashboard</title>
+<title>MDP Performance 360</title>
 
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,7 +33,7 @@
                 </div>
 
                 <div class="logo-subtitle">
-                    Performance Dashboard
+                    MDP Performance 360
                 </div>
             </div>
 
@@ -42,6 +42,7 @@
         <div class="topbar-right">
 
     <div class="top-user" id="topUser"></div>
+    <button class="logout-btn" id="localAccessBtn" style="display:none;">Acessos sem Microsoft</button>
     <button
     class="logout-btn"
     id="teamBtn"
@@ -312,6 +313,12 @@ document.getElementById(
 };        
 window.tipoUtilizador =
     utilizador.TipoUtilizador;
+if (utilizador.TipoUtilizador === 'ADMIN' && CONFIG.localPortalUrl) {
+    const localButton = document.getElementById('localAccessBtn');
+    localButton.style.display = 'block';
+    localButton.onclick = () => window.location.assign(CONFIG.localPortalUrl);
+}
+
 if(
     utilizador.TipoUtilizador === "ADMIN"
     ||
