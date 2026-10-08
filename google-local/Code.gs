@@ -1,14 +1,19 @@
-const DB_ID = '1FkOjkLUWDvZQybzgsE9UQrkFru3I7nV-ycduaVHUZdU';
-const SITE = 'montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154';
+const DB_ID = PropertiesService.getScriptProperties().getProperty('LOCAL_DB_ID');
+const SITE = PropertiesService.getScriptProperties().getProperty('COMPANY_SITE_ID');
 const TABLES = {
   Users: ['id','username','name','number','department','role','active','revision','created'],
   Credentials: ['userId','hash','mustChange','revision','failures','lockedUntil'],
   Sessions: ['digest','userId','revision','expires'],
   Publications: ['id','userId','sourceId','version','publishedAt','publishedBy','snapshot'],
   Acknowledgements: ['publicationId','userId','at','comment'],
-  Audit: ['at','actor','action','target']
+  Audit: ['at','actor','action','target'],
+  PublicationData: ['id','index','chunk'],
+  Tasks: ['id','evaluationId','userId','period','companyVersion','state','dataId','created'],
+  TaskData: ['id','index','chunk'],
+  SelfAssessments: ['evaluationId','userId','version','at','answers']
 };
-function doGet() {
+function doGet(e) {
+  if(e&&e.parameter&&e.parameter.mode==='performance')return HtmlService.createHtmlOutputFromFile('Performance').setTitle('MDP Performance 360 — Estratégia e avaliação');
   return HtmlService.createHtmlOutputFromFile('Portal').setTitle('MDP Performance 360');
 }
 function setup_() {
@@ -103,6 +108,7 @@ function localApi(request) {
     if(!request||typeof request!=='object') throw new Error('Pedido inválido.');
     const action=request.action;
     lock.waitLock(30000);
+    if(action==='performance')return {ok:true,data:performanceDispatch_(request)};
     if(action==='login') {
       const p=PropertiesService.getScriptProperties(),minute=Math.floor(Date.now()/60000),key='RATE';
       const rate=JSON.parse(p.getProperty(key)||'{}');
@@ -135,9 +141,11 @@ function localApi(request) {
     if(action==='myEvaluations') {
       const {u}=session_(request.token,false);
       const acknowledgements=rows_('Acknowledgements').filter(a=>a.userId===u.id);
-      const evaluations=rows_('Publications').filter(e=>e.userId===u.id).map(e=>({id:e.id,version:e.version,publishedAt:e.publishedAt,snapshot:JSON.parse(e.snapshot),acknowledged:acknowledgements.some(a=>a.publicationId===e.id)}));
+      const evaluations=rows_('Publications').filter(e=>e.userId===u.id).map(e=>({id:e.id,version:e.version,publishedAt:e.publishedAt,snapshot:typeof performanceReadPublication_==='function'?performanceReadPublication_(e):JSON.parse(e.snapshot),acknowledged:acknowledgements.some(a=>a.publicationId===e.id)}));
       return {ok:true,data:{user:publicUser_(u),evaluations:evaluations.reverse()}};
     }
+    if(action==='myTasks'){const {u}=session_(request.token,false);return {ok:true,data:{tasks:performanceLocalTasks_(u)}};}
+    if(action==='selfAssessment'){const {u}=session_(request.token,false);return {ok:true,data:performanceLocalSelf_(request,u)};}
     if(action==='acknowledge') {
       const {u}=session_(request.token,false);
       const e=rows_('Publications').find(e=>e.id===request.publicationId&&e.userId===u.id);
@@ -157,6 +165,7 @@ function localApi(request) {
       const hash=hash_(request.password),u={id:Utilities.getUuid(),username,name:text_(request.name,120),number,department:text_(request.department||'',120),role:text_(request.role||'',120),active:true,revision:1,created:new Date().toISOString()};
       if(!u.name) throw new Error('Preencha o nome.');
       append_('Credentials',{userId:u.id,hash,mustChange:true,revision:1,failures:0,lockedUntil:0});append_('Users',u);audit_(admin.id,'createUser',u.id);
+      if(typeof performanceLinkLocal_==='function'){try{performanceLinkLocal_(u,request.adminToken,admin.id);}catch(e){audit_(admin.id,'profileSyncPending',u.id);}}
       return {ok:true,data:publicUser_(u)};
     }
     const u=rows_('Users').find(u=>u.id===request.userId);if(!u) throw new Error('Colaborador não encontrado.');
