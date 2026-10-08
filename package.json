@@ -1,0 +1,1 @@
+{"name":"mdp-performance-360","version":"1.0.0","private":true,"type":"module","engines":{"node":">=22.14"},"scripts":{"start":"node server/index.js","test":"node --test tests/*.test.js","bootstrap":"node server/bootstrap.js","import:legacy":"node server/import-legacy.js"},"dependencies":{"jose":"^6.1.0"}}
