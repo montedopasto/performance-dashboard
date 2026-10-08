@@ -350,7 +350,9 @@
      */
     var nextTick = typeof process !== 'undefined' && process && typeof process.nextTick === 'function'
         ? (typeof setImmediate === 'function' ? setImmediate : process.nextTick)
-        : setTimeout;
+        : (typeof setTimeout === 'function' ? setTimeout : function() {
+            throw Error('Async bcrypt is unavailable in Apps Script; use synchronous methods.');
+        }); // Apps Script V8 adapter; synchronous hash/compare remain unchanged.
 
     /**
      * Converts a JavaScript string to UTF8 bytes.
