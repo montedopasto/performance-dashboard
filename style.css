@@ -744,3 +744,7 @@ body{
     width:180px !important;
     height:180px !important;
 }
+
+/* Keep all dashboard actions reachable on small screens. */
+.topbar-right{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:700px){.topbar{align-items:flex-start;gap:18px;flex-wrap:wrap}.topbar-right{justify-content:flex-start;gap:8px}.logout-btn{padding:10px 12px}}

@@ -16,3 +16,5 @@ test('Microsoft bridge sends credentials only to an allowed Google origin with t
 test('Google portal client script has valid JavaScript syntax',()=>{
  const html=fs.readFileSync('google-local/Portal.html','utf8');const code=html.match(/<script>([\s\S]*?)<\/script>/)[1];assert.doesNotThrow(()=>new vm.Script(code));
 });
+
+test('Company portal client script has valid JavaScript syntax',()=>{const html=fs.readFileSync('google-local/Performance.html','utf8');assert.doesNotThrow(()=>new vm.Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]));});
