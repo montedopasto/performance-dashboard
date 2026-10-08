@@ -1,0 +1,7 @@
+node_modules/
+data/
+.env
+*.sqlite*
+# Private source material and strategic data are loaded into the server, never GitHub.
+docs/source-slides.json
+docs/private-catalog.json
