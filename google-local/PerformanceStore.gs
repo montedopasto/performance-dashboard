@@ -4,7 +4,7 @@ function performanceGraph_(path,token,method,body) {
   const url='https://graph.microsoft.com/v1.0/'+path;
   const r=UrlFetchApp.fetch(url,{method:method||'get',headers:{Authorization:'Bearer '+token},contentType:'application/json',...(body?{payload:JSON.stringify(body)}:{}),muteHttpExceptions:true});
   const status=r.getResponseCode();let data={};try{data=JSON.parse(r.getContentText()||'{}');}catch(e){}
-  if(status!==404&&(status<200||status>=300))throw new Error(status===401?'A sessão Microsoft terminou. Entre novamente.':'Não foi possível aceder aos dados da empresa.');
+  if(status!==404&&(status<200||status>=300))throw new Error(status===401?'A sessão Microsoft terminou. Entre novamente.':'SharePoint: HTTP '+status+' · '+String(data.error?.code||'erro')+' · '+String(data.error?.message||'Não foi possível aceder aos dados da empresa.').slice(0,300));
   return {status,data};
 }
 function performanceIdentity_(token) {
@@ -19,7 +19,9 @@ function performanceIdentity_(token) {
   return {id:'legacy-'+String(f.NumeroColaborador),oid:me.id,name:f.NomeColaborador,username:String(f.NumeroColaborador),number:String(f.NumeroColaborador),role:['ADMIN','CHEFIA','DIRECAO'].includes(f.TipoUtilizador)?f.TipoUtilizador:'COLABORADOR',active:true,roleId:'',departmentId:'',managerId:''};
 }
 function performanceStore_(token,create) {
-  let info=performanceGraph_('sites/'+SITE+'/lists/'+PERFORMANCE_LIST+'?$select=id,displayName',token),initialized=info.status!==404;
+  let page='sites/'+SITE+'/lists?$select=id,displayName',available=[];
+  while(page){const response=performanceGraph_(page,token);available.push(...(response.data.value||[]));const next=response.data['@odata.nextLink'];pFail_(!next||next.startsWith('https://graph.microsoft.com/v1.0/'),'Endereço de paginação inválido.');page=next?next.slice('https://graph.microsoft.com/v1.0/'.length):null;}
+  let info={data:available.find(l=>l.displayName===PERFORMANCE_LIST)},initialized=!!info.data;
   if(!initialized&&create){info=performanceGraph_('sites/'+SITE+'/lists',token,'post',{displayName:PERFORMANCE_LIST,list:{template:'genericList'},columns:[{name:'EntityKind',text:{}},{name:'EntityId',text:{}},{name:'EntityVersion',number:{decimalPlaces:'none'}},{name:'Payload',text:{allowMultipleLines:true,textType:'plain'}}]});initialized=true;}
   const raw=initialized?list_(info.data.id,token):[],records=[],bundles={};
   for(const item of raw){

@@ -31,6 +31,7 @@ function fixture(){
     if(opt.method==='post'){const body=JSON.parse(opt.payload);if(failCommit&&JSON.parse(body.fields.Payload).commit)return response(500,{});const row={id:String(records.length+1),fields:body.fields};records.push(row);return response(201,{id:row.id});}
     return response(200,{value:records});
   }
+  if(url.includes('/lists?$select=id,displayName'))return response(200,{value:exists?[{id:'entities-list',displayName:'MDP360Entities'}]:[]});
   if(url.includes('/lists/MDP360Entities?'))return response(exists?200:404,exists?{id:'entities-list'}:{});
   if(url.endsWith('/lists')&&opt.method==='post'){exists=true;return response(201,{id:'entities-list'});}
   return response(200,{value:[]});
