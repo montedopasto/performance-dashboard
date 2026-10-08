@@ -1,5 +1,6 @@
 const CONFIG = {
 
+    localPortalOrigin: "https://n-baiifmcxzijxjl6ug4txhnlzdox7voiy5rsvckq-0lu-script.googleusercontent.com",
     localPortalUrl: "https://script.google.com/macros/s/AKfycby05uTrgtpLpRCl8ODhqejWo1ONuoZXcpcKE5De3x6WKcFQK-FvXPmsEL8602800BW_8g/exec",
 
     clientId: "247b5853-5e9d-4907-8955-a1fa67adb33a",
