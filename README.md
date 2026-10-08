@@ -2,7 +2,7 @@
 
 Evolução do Performance Dashboard da Monte do Pasto. O servidor mantém o dashboard pessoal, radar de competências, histórico, perfis e equipa, e acrescenta BSC corporativo/departamental, modelos configuráveis por função, versões das regras, autoavaliação, validação, publicação e tomada de conhecimento.
 
-A aplicação Microsoft existente permanece na raiz, servida pelo GitHub Pages. O acesso sem Microsoft usa o portal Google Apps Script em `google-local/`. A implementação Node em `server/` e `public/` contém a evolução BSC e necessita de execução própria antes de ficar disponível em produção. O servidor só disponibiliza os novos ficheiros de `public/`. Não disponibiliza as páginas antigas que acedem diretamente ao Graph. As listas Microsoft existentes não são alteradas. O login Microsoft e as páginas atuais continuam disponíveis; a entrada sem Microsoft passa para o portal privado Google.
+A aplicação Microsoft existente permanece na raiz, servida pelo GitHub Pages. O acesso sem Microsoft usa o portal Google Apps Script em `google-local/`. Os módulos BSC e avaliações são disponibilizados pelo mesmo Apps Script, em `?mode=performance`, com dados da empresa no SharePoint. A implementação Node em `server/` e `public/` fica disponível como alternativa de alojamento. O servidor só disponibiliza os novos ficheiros de `public/`. Não disponibiliza as páginas antigas que acedem diretamente ao Graph. As listas Microsoft existentes não são alteradas. O login Microsoft e as páginas atuais continuam disponíveis; a entrada sem Microsoft passa para o portal privado Google.
 
 ## Executar
 
@@ -67,7 +67,7 @@ As listas reais ainda não foram exportadas nesta implementação. As fotografia
 
 ## GitHub e alojamento
 
-O GitHub guarda o código e pode executar testes/builds. [GitHub Pages é um serviço de alojamento estático](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages). O servidor de autenticação, permissões e base de dados precisa de um alojamento que execute Node.js ou Docker.
+O GitHub guarda o código e pode executar testes/builds. [GitHub Pages é um serviço de alojamento estático](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages). A publicação atual usa Apps Script para executar as regras e SharePoint para os dados corporativos. A alternativa Node necessita de alojamento Node.js ou Docker.
 
 A implementação atual serve interface e API na mesma origem, para proteger a sessão com cookies HttpOnly e CSRF. A publicação da interface separadamente no GitHub Pages exige uma adaptação explícita do domínio, caminho, sessão e política entre origens. Não publique `public/` isoladamente como se fosse uma aplicação funcional.
 
@@ -85,4 +85,16 @@ Os testes cobrem autenticação, validação Microsoft com tokens assinados de t
 
 O portal Apps Script em `google-local/` usa uma folha privada exclusivamente para contas sem Microsoft, hashes bcrypt, sessões, publicações e auditoria. As contas serão criadas posteriormente pelo administrador; não se incluem utilizadores de exemplo nem palavras-passe no repositório. O acesso administrativo é validado no servidor via Microsoft Graph e `UtilizadoresDashboard`, exigindo ADMIN. Cada publicação guarda uma cópia imutável dos resultados históricos e uma nova publicação cria outra versão. A informação estratégica dos PowerPoints continua privada e os indicadores não definidos não são inventados.
 
-O portal Google foi inicializado e publicado. O endereço `/exec` está configurado em `CONFIG.localPortalUrl`. A página de entrada é acessível sem conta Google; todos os pedidos de dados exigem uma sessão local ou validação Microsoft ADMIN no servidor. A folha de dados não é pública. A função temporária de inicialização foi retirada antes da publicação. O código Google local não substitui a aplicação BSC Node: nesta fase serve consulta e publicação de avaliações SharePoint para colaboradores sem Microsoft.
+O portal Google foi inicializado e publicado. O endereço `/exec` está configurado em `CONFIG.localPortalUrl`. A página de entrada é acessível sem conta Google; todos os pedidos de dados exigem uma sessão local ou validação Microsoft ADMIN no servidor. A folha de dados não é pública. A função temporária de inicialização foi retirada antes da publicação. Os módulos BSC usam o mesmo portal, através de `?mode=performance`, e validam cada sessão Microsoft com os perfis existentes. O Google Sheets guarda apenas as contas, sessões e cópias de avaliações dos colaboradores sem Microsoft.
+
+## Módulos corporativos no Apps Script
+
+O projeto privado inclui `Código.gs` (Code, PerformanceDomain, PerformanceApi, PerformanceStore, PerformancePrivate e PerformanceLocal), `Bcrypt.gs`, `Portal.html` e `Performance.html`. Configure `LOCAL_DB_ID` e `COMPANY_SITE_ID` nas propriedades privadas do projeto (ou injete os valores apenas no bundle privado de publicação). Esses identificadores não constam no código público. A função privada `performanceProposals_` é incluída apenas no projeto Google, a partir de `docs/private-proposals.gs`, ignorado pelo Git. Nunca copie o catálogo estratégico para o repositório público.
+
+A preparação, reservada a ADMIN Microsoft, cria `MDP360Entities` no SharePoint e importa os objetivos, indicadores e quatro modelos dos PowerPoints em definição. Importa os colaboradores reais existentes sem criar credenciais. Não ativa indicadores, não publica avaliações e não preenche funções ainda em desenho.
+
+O catálogo e as versões BSC ficam nessa lista. Os resultados individuais nunca entram na lista partilhada: cada avaliação usa ficheiros privados separados para histórico da chefia, modelo de autoavaliação, respostas do próprio e publicação. Os ficheiros começam vazios; o acesso herdado é removido e verificado antes de escrever informação individual. A partilha exige início de sessão e não envia convites por email. A avaliação em preparação pertence à administração e à chefia atribuída; o colaborador recebe apenas o modelo e a publicação. Respostas Microsoft são assinadas no servidor e são congeladas ao submeter a avaliação para validação.
+
+A chefia é atribuída antes de criar avaliações. A atribuição fica bloqueada quando existem avaliações, para conservar o acesso e a responsabilidade históricos. Reatribuição de avaliações existentes requer uma operação futura de transferência e revisão das permissões.
+
+As avaliações antigas são consultadas nas listas originais com os valores históricos, sem recalcular com os modelos atuais. A aplicação anterior, o radar e os relatórios permanecem disponíveis no GitHub Pages.

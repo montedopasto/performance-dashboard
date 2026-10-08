@@ -42,6 +42,7 @@
         <div class="topbar-right">
 
     <div class="top-user" id="topUser"></div>
+    <button class="logout-btn" id="performanceBtn">BSC e avaliações</button>
     <button class="logout-btn" id="localAccessBtn" style="display:none;">Acessos sem Microsoft</button>
     <button
     class="logout-btn"
@@ -313,6 +314,7 @@ document.getElementById(
 };        
 window.tipoUtilizador =
     utilizador.TipoUtilizador;
+document.getElementById('performanceBtn').onclick = () => window.location.assign(CONFIG.localPortalUrl + '?mode=performance');
 if (utilizador.TipoUtilizador === 'ADMIN' && CONFIG.localPortalUrl) {
     const localButton = document.getElementById('localAccessBtn');
     localButton.style.display = 'block';
