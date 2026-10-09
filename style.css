@@ -7,3 +7,5 @@
 @media print{nav,header,footer,#activity,.no-print{display:none!important}.workspace{margin-left:0}main{padding:0}body{background:white}.card{box-shadow:none;break-inside:avoid}.kpi-list{grid-template-columns:1fr}.objective-heading{display:block}.badge{border:1px solid #ccc}}
 
 .local-workspace canvas{width:100%;max-width:700px;height:230px}
+
+.admin-sections{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}.admin-sections button[aria-pressed="true"]{background:var(--green);color:white}.admin-sections button{border:1px solid var(--line)}
