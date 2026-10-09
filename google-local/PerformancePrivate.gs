@@ -26,10 +26,18 @@ function performancePrivateFile_(token,recipients,employeeRole) {
   function invite(emails,role,retain){if(!emails.length)return;const result=performanceFileRequest_('items/'+empty.id+'/invite',token,'post',{recipients:emails.map(email=>({email})),roles:[role],requireSignIn:true,sendInvitation:false,retainInheritedPermissions:retain});pFail_(result&&Array.isArray(result.value)&&result.value.length>0&&!result.value.some(p=>p.error),'Não foi possível restringir o acesso à avaliação.');grants.push(...result.value);}
   invite(recipients.writers,'write',false);
   if(employeeRole&&recipients.employeeEmail&&!recipients.writers.includes(recipients.employeeEmail))invite([recipients.employeeEmail],employeeRole,true);
-  const actual=performanceFileRequest_('items/'+empty.id+'/permissions',token),allowedEmails=[...recipients.writers,...(employeeRole?[recipients.employeeEmail]:[])],allowedIds=[recipients.current.id];
+  let actual=performanceFileRequest_('items/'+empty.id+'/permissions',token);const allowedEmails=[...recipients.writers,...(employeeRole?[recipients.employeeEmail]:[])],allowedIds=[recipients.current.id];
   const principals=p=>[p.grantedToV2,p.grantedTo,...(p.grantedToIdentitiesV2||[]),...(p.grantedToIdentities||[])].filter(Boolean);
   for(const p of grants)for(const principal of principals(p)){const user=principal.user;if(user&&(allowedEmails.includes(String(user.email||'').toLowerCase())||p.invitation?.signInRequired===true&&allowedEmails.includes(String(p.invitation.email||'').toLowerCase()))&&user.id)allowedIds.push(user.id);}
   pFail_(actual&&Array.isArray(actual.value)&&actual.value.length>0,'Não foi possível verificar as permissões privadas.');
+  // SharePoint may retain the site owners group even after invite removes inherited
+  // permissions. Restrict only this newly-created, still-empty file, then verify again.
+  for(const p of actual.value)if(!performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails)) {
+    pFail_(p.id&&!p.inheritedFrom,'O SharePoint não permite restringir os acessos herdados da avaliação.');
+    pFail_(performanceFileRequest_('items/'+empty.id+'/permissions/'+encodeURIComponent(p.id),token,'delete'),'O SharePoint não permitiu restringir o acesso ao ficheiro da avaliação.');
+  }
+  actual=performanceFileRequest_('items/'+empty.id+'/permissions',token);
+  pFail_(actual&&Array.isArray(actual.value)&&actual.value.length>0,'Não foi possível confirmar as permissões privadas.');
   for(const p of actual.value)pFail_(performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails),'O ficheiro mantém acesso herdado ou acesso não autorizado. Não foi escrita informação de avaliação.');
   return empty.id;
 }
