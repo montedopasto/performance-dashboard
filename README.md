@@ -2,7 +2,11 @@
 
 Evolução do Performance Dashboard da Monte do Pasto. O servidor mantém o dashboard pessoal, radar de competências, histórico, perfis e equipa, e acrescenta BSC corporativo/departamental, modelos configuráveis por função, versões das regras, autoavaliação, validação, publicação e tomada de conhecimento.
 
-A aplicação Microsoft existente permanece na raiz, servida pelo GitHub Pages. O acesso sem Microsoft usa o portal Google Apps Script em `google-local/`. Os módulos BSC e avaliações são disponibilizados pelo mesmo Apps Script, em `?mode=performance`, com dados da empresa no SharePoint. A implementação Node em `server/` e `public/` fica disponível como alternativa de alojamento. O servidor só disponibiliza os novos ficheiros de `public/`. Não disponibiliza as páginas antigas que acedem diretamente ao Graph. As listas Microsoft existentes não são alteradas. O login Microsoft e as páginas atuais continuam disponíveis; a entrada sem Microsoft passa para o portal privado Google.
+A interface principal é uma aplicação única no GitHub Pages: `index.html`, `app.js`, `style.css`. Os antigos endereços `dashboard.html`, `equipa.html`, `avaliacao.html` e `colaborador.html` encaminham para esta nova interface. A entrada apresenta a visão geral, BSC corporativo e departamental, avaliações, modelos e administração; o histórico de origem é consultado dentro do novo espaço, sem recuperar o ecrã antigo.
+
+A API existente em Apps Script executa as regras, conserva os dados corporativos no SharePoint e usa uma folha privada apenas para contas sem Microsoft, sessões, autoavaliações e cópias publicadas para esses colaboradores. `acesso.html` oferece esse acesso no mesmo endereço e identidade visual da aplicação. A implementação Node em `server/` e `public/` continua disponível como alternativa de alojamento.
+
+`google-local/ApiRelay.html` liga a interface do GitHub à API através de mensagens entre origens. Não contém formulários nem dados de avaliação. Apenas esta página sem interface permite incorporação; os portais completos mantêm a proteção padrão do Apps Script. O relay aceita apenas a origem exata da empresa, a janela superior, um identificador aleatório por carregamento e pedidos com identificador próprio. O cliente verifica também a origem e janela do relay em todas as respostas. Cada operação continua a validar autenticação e permissões no servidor. Tokens Microsoft, palavras-passe e resultados não são colocados no URL ou no código público. O cliente conserva os seus tokens de acesso apenas em memória; a biblioteca Microsoft mantém a sua cache de sessão.
 
 ## Executar
 
@@ -69,7 +73,7 @@ As listas reais ainda não foram exportadas nesta implementação. As fotografia
 
 O GitHub guarda o código e pode executar testes/builds. [GitHub Pages é um serviço de alojamento estático](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages). A publicação atual usa Apps Script para executar as regras e SharePoint para os dados corporativos. A alternativa Node necessita de alojamento Node.js ou Docker.
 
-A implementação atual serve interface e API na mesma origem, para proteger a sessão com cookies HttpOnly e CSRF. A publicação da interface separadamente no GitHub Pages exige uma adaptação explícita do domínio, caminho, sessão e política entre origens. Não publique `public/` isoladamente como se fosse uma aplicação funcional.
+A alternativa Node serve interface e API na mesma origem, com cookies HttpOnly e CSRF. A versão GitHub Pages utiliza o transporte autenticado descrito acima. Não publique `public/` isoladamente: os ficheiros dessa alternativa dependem das rotas do servidor Node.
 
 O Dockerfile prepara a aplicação para um serviço com HTTPS e volume persistente. Configure `PUBLIC_ORIGIN=https://dominio-da-aplicacao`, os valores Microsoft e uma base persistente. Use uma única instância por base SQLite. O armazenamento não pode ser efémero. Faça backups com a API de backup SQLite ou com o serviço parado; não copie apenas o ficheiro principal enquanto o WAL estiver ativo.
 

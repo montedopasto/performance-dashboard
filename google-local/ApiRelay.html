@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body><script>
+'use strict';
+// This frame has no login forms or data UI. Only the company's GitHub app can call it.
+const APP_ORIGIN='https://montedopasto.github.io';
+const channel=<?!= JSON.stringify(channel) ?>;
+const inFlight=new Set();
+window.addEventListener('message',event=>{
+  const m=event.data;
+  if(event.origin!==APP_ORIGIN||event.source!==window.top||!m||m.type!=='mdp:request'||m.channel!==channel||!/^[-a-f0-9]{36}$/.test(m.id||''))return;
+  if(inFlight.has(m.id)||inFlight.size>=8||!m.request||typeof m.request!=='object'||Array.isArray(m.request))return;
+  if(JSON.stringify(m.request).length>1100000)return;
+  inFlight.add(m.id);
+  const reply=result=>{inFlight.delete(m.id);window.top.postMessage({type:'mdp:response',channel,id:m.id,result},APP_ORIGIN);};
+  google.script.run.withSuccessHandler(reply).withFailureHandler(()=>reply({ok:false,error:'Não foi possível ligar ao sistema. Tente novamente.'})).localApi(m.request);
+});
+if(/^[a-f0-9-]{72}$/.test(channel||''))window.top.postMessage({type:'mdp:ready',channel},APP_ORIGIN);
+</script></body></html>

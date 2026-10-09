@@ -13,6 +13,14 @@ const TABLES = {
   SelfAssessments: ['evaluationId','userId','version','at','answers']
 };
 function doGet(e) {
+  if(e&&e.parameter&&e.parameter.mode==='relay'){
+    const channel=e.parameter.channel;
+    if(!/^[a-f0-9-]{72}$/.test(channel||''))return HtmlService.createHtmlOutput('Pedido inválido.');
+    const template=HtmlService.createTemplateFromFile('ApiRelay');template.channel=channel;
+    // Embedding is enabled only for a UI-free relay. It authenticates every request
+    // server-side and accepts messages only from the exact company app origin.
+    return template.evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   if(e&&e.parameter&&e.parameter.mode==='performance')return HtmlService.createHtmlOutputFromFile('Performance').setTitle('MDP Performance 360 — Estratégia e avaliação');
   return HtmlService.createHtmlOutputFromFile('Portal').setTitle('MDP Performance 360');
 }
