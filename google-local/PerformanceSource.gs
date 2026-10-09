@@ -2,7 +2,7 @@
 function performanceSourceMerge_(current,baseline,enriched,kind) {
   if(!current||current.status!=='definition')return null;
   const next=pClone_(current),equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-  const merge=(to,from,provided,keys)=>{for(const key of keys)if(!equal(provided[key],from[key])&&equal(to[key],from[key])&&provided[key]!==undefined)to[key]=pClone_(provided[key]);};
+  const merge=(to,from,provided,keys)=>{for(const key of keys)if(!(key==='targetPeriod'&&!equal(to.target,from.target)&&!equal(to.target,provided.target))&&!equal(provided[key],from[key])&&equal(to[key],from[key])&&provided[key]!==undefined)to[key]=pClone_(provided[key]);};
   const keys=['target','unit','direction','definition','confirmation','targetText','targetPeriod','sourceConflict'];
   if(kind==='templates'){
     for(const o of next.objectives||[]){const old=baseline.objectives.find(x=>x.id===o.id),supplied=enriched.objectives.find(x=>x.id===o.id);if(!old||!supplied)continue;

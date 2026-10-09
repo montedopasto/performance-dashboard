@@ -102,13 +102,13 @@ test('source enrichment is scoped, repeatable, append-only and preserves manual 
  update(f,'kpis','k',{target:75});
  const plan=ok(f.api('admin','/source-enrichment'));assert.equal(plan.pending.length,2);
  const result=ok(f.api('admin','/source-enrichment','POST',{items:plan.pending}));assert.equal(result.saved.length,2);
- const cat=ok(f.api('admin','/catalog'));assert.equal(cat.kpis[0].target,75);assert.equal(cat.kpis[0].unit,'%');assert.equal(cat.kpis[0].status,'definition');
+ const cat=ok(f.api('admin','/catalog'));assert.equal(cat.kpis[0].target,75);assert.equal(cat.kpis[0].unit,'%');assert.equal(cat.kpis[0].targetPeriod,undefined);assert.equal(cat.kpis[0].status,'definition');
  assert.equal(cat.templates[0].objectives[0].criteria[0].target,90);
  assert.equal(ok(f.api('admin','/source-enrichment')).pending.length,0);
  assert.equal(ok(f.api('admin','/versions/kpis/k'))[0].target,null);
  update(f,'templates','t',{status:'validation'});enriched.templates[0].objectives[0].criteria[0].target=50;
  assert.equal(ok(f.api('admin','/source-enrichment')).pending.length,0);
- update(f,'kpis','k',{status:'validation'});update(f,'kpis','k',{status:'approved'});update(f,'kpis','k',{status:'active'});
+ update(f,'kpis','k',{targetPeriod:'2028-A'});update(f,'kpis','k',{status:'validation'});update(f,'kpis','k',{status:'approved'});update(f,'kpis','k',{status:'active'});
  assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2026-A',result:{actual:75,na:false}}).ok,false);
  assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2028-A',result:{actual:75,na:false}}).ok,true);
 });
