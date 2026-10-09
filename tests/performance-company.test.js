@@ -112,3 +112,18 @@ test('source enrichment is scoped, repeatable, append-only and preserves manual 
  assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2026-A',result:{actual:75,na:false}}).ok,false);
  assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2028-A',result:{actual:75,na:false}}).ok,true);
 });
+
+test('company strategy image is private to strategy profiles, admin-editable and versioned',()=>{
+ const f=fixture();ok(f.api('admin','/setup','POST'));
+ assert.equal(ok(f.api('admin','/strategy-map')),null);
+ const png='data:image/png;base64,iVBORw0KGgoAAA==';
+ const first=ok(f.api('admin','/strategy-map','PUT',{name:'Source map',description:'Objectives and arrows',imageData:png,expectedVersion:0}));
+ assert.equal(first.version,1);assert.equal(ok(f.api('chief','/strategy-map')).imageData,png);
+ assert.equal(f.api('alice','/strategy-map').ok,false);
+ assert.equal(f.api('chief','/strategy-map','PUT',{...first,expectedVersion:1}).ok,false);
+ for(const imageData of ['data:image/svg+xml;base64,PHN2Zz4=','https://public.example/map.png','data:image/png;base64,SGVsbG8='])assert.equal(f.api('admin','/strategy-map','PUT',{name:'Invalid',description:'',imageData,expectedVersion:1}).ok,false);
+ assert.equal(f.api('admin','/strategy-map','PUT',{name:'Too large',description:'',imageData:png+'A'.repeat(800000),expectedVersion:1}).ok,false);
+ const second=ok(f.api('admin','/strategy-map','PUT',{name:'Replacement',description:'New map',imageData:png,expectedVersion:1}));assert.equal(second.version,2);
+ assert.equal(f.api('admin','/strategy-map','PUT',{name:'Stale',description:'',imageData:png,expectedVersion:1}).ok,false);
+ const store=f.ctx.performanceStore_(token('admin'),false);assert.equal(store.versions('strategy-map','company').length,2);assert.equal(store.versions('strategy-map','company')[0].name,'Source map');
+});

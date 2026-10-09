@@ -7,6 +7,19 @@ function performanceApi_(request,u,store) {
   const text=(v,max=200)=>typeof v==='string'&&v.trim().length>0&&v.length<=max;
   const admin=u=>pFail_(u.role==='ADMIN','Acesso reservado ao administrador.',403);
   const scoped=(u,e)=>pCanManage_(u,e)||u.id===e.id;
+  if(url.pathname==='/api/strategy-map') {
+    pFail_(['ADMIN','CHEFIA','DIRECAO'].includes(u.role),'Sem acesso ao BSC da empresa.',403);
+    const old=store.get('strategy-map','company');
+    if(method==='GET')return old;
+    if(method==='PUT') {
+      admin(u);pFail_((old?.version||0)===b.expectedVersion,'A imagem mudou. Recarregue.',409);
+      pFail_(text(b.name)&&typeof b.description==='string'&&b.description.length<=2000,'Título ou descrição inválidos.');
+      pFail_(typeof b.imageData==='string'&&b.imageData.length<=800000&&/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.imageData),'Escolha uma imagem PNG ou JPEG válida.');
+      const encoded=b.imageData.split(',')[1];
+      pFail_(encoded.length%4===0&&(b.imageData.startsWith('data:image/png;')?encoded.startsWith('iVBORw0KGgo'):encoded.startsWith('/9j/')),'Conteúdo de imagem inválido.');
+      return store.transaction(()=>store.save('strategy-map',{id:'company',name:b.name.trim(),description:b.description,imageData:b.imageData},u.id));
+    }
+  }
   function validateEntity(kind,b,old) {
     pFail_(text(b.name),'Nome em falta.');
     if(['templates','objectives','kpis'].includes(kind)) {

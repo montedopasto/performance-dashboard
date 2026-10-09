@@ -9,3 +9,5 @@
 .local-workspace canvas{width:100%;max-width:700px;height:230px}
 
 .admin-sections{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}.admin-sections button[aria-pressed="true"]{background:var(--green);color:white}.admin-sections button{border:1px solid var(--line)}
+
+.strategy-image-card{padding:1rem}.strategy-map-image{display:block;width:100%;height:auto;object-fit:contain;border-radius:.4rem}.strategy-map-dialog{max-width:96vw;width:96vw;max-height:94vh;border:1px solid var(--line);border-radius:1rem;padding:1rem}.strategy-map-dialog::backdrop{background:rgba(0,0,0,.65)}.map-scroll{overflow:auto;max-height:82vh;margin-top:1rem}.map-scroll img{display:block;width:2400px;max-width:none;height:auto}#mapPreview{margin:1rem 0}
