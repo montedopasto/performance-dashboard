@@ -167,3 +167,21 @@ test('activation names all incomplete criteria before writing and permits retry 
  const active=await models.activate(input,input.status,b=>Promise.resolve(ok(f.api('admin','/catalog/templates/t','PUT',b))));
  assert.equal(active.status,'active');
 });
+
+test('private permission checks accept resolved named invitations and SharePoint membership identities, never broad or unresolved access',()=>{
+ const f=fixture();const ids=['admin-oid'],emails=['admin@company.test'];
+ const allowed=p=>f.ctx.performancePrivatePermissionAllowed_(p,ids,emails);
+ assert.equal(allowed({grantedToV2:{user:{id:'admin-oid'}},invitation:{email:'admin@company.test',signInRequired:true}}),true);
+ assert.equal(allowed({grantedToV2:{user:{id:'site-local-id'},siteUser:{loginName:'i:0#.f|membership|admin@company.test'}}}),true);
+ for(const p of [
+  {grantedToV2:{user:{id:'bob-oid'}},invitation:{email:'bob@company.test',signInRequired:true}},
+  {grantedToV2:{user:{id:'admin-oid'}},invitation:{email:'admin@company.test',signInRequired:false}},
+  {invitation:{email:'admin@company.test',signInRequired:true}},
+  {grantedToV2:{user:{id:'admin-oid'}},link:{scope:'anonymous'}},
+  {grantedToV2:{user:{id:'admin-oid'}},inheritedFrom:{id:'folder'}},
+  {grantedToV2:{siteGroup:{id:'everyone'}}},
+  {grantedToV2:{user:{id:'unknown',displayName:'admin@company.test'}}},
+  {grantedToV2:{user:{id:'admin-oid'},group:{id:'everyone'}}},
+  {grantedToV2:{user:{id:'admin-oid'}},grantedTo:{user:{id:'bob-oid'}}}
+ ])assert.equal(allowed(p),false);
+});

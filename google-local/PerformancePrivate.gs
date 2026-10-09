@@ -28,10 +28,25 @@ function performancePrivateFile_(token,recipients,employeeRole) {
   if(employeeRole&&recipients.employeeEmail&&!recipients.writers.includes(recipients.employeeEmail))invite([recipients.employeeEmail],employeeRole,true);
   const actual=performanceFileRequest_('items/'+empty.id+'/permissions',token),allowedEmails=[...recipients.writers,...(employeeRole?[recipients.employeeEmail]:[])],allowedIds=[recipients.current.id];
   const principals=p=>[p.grantedToV2,p.grantedTo,...(p.grantedToIdentitiesV2||[]),...(p.grantedToIdentities||[])].filter(Boolean);
-  for(const p of grants)for(const principal of principals(p)){const user=principal.user;if(user&&allowedEmails.includes(String(user.email||'').toLowerCase())&&user.id)allowedIds.push(user.id);}
+  for(const p of grants)for(const principal of principals(p)){const user=principal.user;if(user&&(allowedEmails.includes(String(user.email||'').toLowerCase())||p.invitation?.signInRequired===true&&allowedEmails.includes(String(p.invitation.email||'').toLowerCase()))&&user.id)allowedIds.push(user.id);}
   pFail_(actual&&Array.isArray(actual.value)&&actual.value.length>0,'Não foi possível verificar as permissões privadas.');
-  for(const p of actual.value){const ps=principals(p);pFail_(!p.link&&!p.invitation&&!p.inheritedFrom&&ps.length>0&&ps.every(x=>x.user&&!x.group&&!x.siteGroup&&(allowedIds.includes(x.user.id)||allowedEmails.includes(String(x.user.email||'').toLowerCase()))),'O ficheiro mantém acesso herdado ou acesso não autorizado. Não foi escrita informação de avaliação.');}
+  for(const p of actual.value)pFail_(performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails),'O ficheiro mantém acesso herdado ou acesso não autorizado. Não foi escrita informação de avaliação.');
   return empty.id;
+}
+function performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails) {
+  // Microsoft Graph retains invitation metadata on redeemed, named permissions.
+  // This is not a sharing link. Verify its recipient and mandatory sign-in as well
+  // as every resolved identity; never infer identity from a display name.
+  if(p.link||p.inheritedFrom)return false;
+  if(p.invitation&&(p.invitation.signInRequired!==true||!allowedEmails.includes(String(p.invitation.email||'').trim().toLowerCase())))return false;
+  const principals=[p.grantedToV2,p.grantedTo,...(p.grantedToIdentitiesV2||[]),...(p.grantedToIdentities||[])].filter(Boolean);
+  return principals.length>0&&principals.every(x=>{
+    if(x.group||x.siteGroup||x.application||!x.user)return false;
+    const email=String(x.user.email||x.siteUser?.email||'').trim().toLowerCase();
+    const login=String(x.siteUser?.loginName||'').trim().toLowerCase();
+    const membership=login.startsWith('i:0#.f|membership|')?login.slice('i:0#.f|membership|'.length):'';
+    return allowedIds.includes(x.user.id)||allowedEmails.includes(email)||!!membership&&allowedEmails.includes(membership);
+  });
 }
 function performancePrivateRead_(id,token){return id?performanceFileRequest_('items/'+id+'/content',token):null;}
 function performancePrivateWrite_(id,data,token){pFail_(performanceFileRequest_('items/'+id+'/content',token,'put',data),'Sem permissão para guardar a avaliação privada.');}
