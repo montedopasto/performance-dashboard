@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const token=who=>'authorized-'+who+'x'.repeat(110);
 const actor={admin:{id:'admin-oid',mail:'admin@company.test'},chief:{id:'chief-oid',mail:'chief@company.test'},alice:{id:'alice-oid',mail:'alice@company.test'},bob:{id:'bob-oid',mail:'bob@company.test'}};
 function fixture(){
- const tables={},props=new Map(),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false;
+ const tables={},props=new Map(),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,fetches=0;
  const people=Object.entries(actor).map(([name,a],i)=>({id:String(i+1),fields:{NumeroColaborador:i+1,NomeColaborador:name,Funcao:'Known function',EmailMicrosoft:a.mail,TipoUtilizador:name==='admin'?'ADMIN':name==='chief'?'CHEFIA':'COLABORADOR',Ativo:true}}));
  function sheet(name){return {getLastRow:()=>tables[name].length,appendRow:r=>tables[name].push([...r]),setFrozenRows(){},getDataRange:()=>({getValues:()=>tables[name].map(r=>[...r])}),getRange:r=>({setValues:v=>{tables[name][r-1]=[...v[0]];}})};}
  const db={getSheetByName:n=>tables[n]?sheet(n):null,insertSheet:n=>{tables[n]=[];return sheet(n)}};
@@ -15,6 +15,7 @@ function fixture(){
  PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k),setProperty:(k,v)=>props.set(k,v)})},SpreadsheetApp:{openById:()=>db},LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){},hasLock:()=>true})},
  Utilities:{getUuid:()=>crypto.randomUUID(),Charset:{UTF_8:'utf8'},DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(a,v)=>Array.from(crypto.createHash(a).update(v).digest()),computeHmacSha256Signature:(v,k)=>Array.from(crypto.createHmac('sha256',k).update(v).digest())},
  UrlFetchApp:{fetch:(url,opt)=>{
+  fetches++;
   const bearer=opt.headers.Authorization.slice(7),who=Object.keys(actor).find(k=>bearer===token(k));if(!who)return response(401,{});
   if(url.includes('/drive/')){
     const path=url.split('/drive/')[1];
@@ -41,7 +42,7 @@ function fixture(){
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
- return {api,ctx,records,tables,files,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
+ return {api,ctx,records,tables,files,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
 }
 function ok(r){assert.equal(r.ok,true,r.error);return r.data;}
 function update(f,kind,id,patch){const catalog=ok(f.api('admin','/catalog'));const old=catalog[kind].find(r=>r.id===id);return ok(f.api('admin','/catalog/'+kind+'/'+id,'PUT',{...old,...patch,expectedVersion:old.version}));}
@@ -84,3 +85,11 @@ test('A broad or inherited file permission prevents writing any individual asses
  assert.throws(()=>f.ctx.performancePrivateSave_(fake,null,token('admin'),[{id:'legacy-3',number:'3'}],{number:'1',role:'ADMIN'}),/acesso herdado/);
  assert.equal(f.files.size,1);assert.deepEqual([...f.files.values()][0].content,{});
 });
+
+ test('bootstrap reads the company once and preserves per-user authorization',()=>{
+ const f=fixture();ok(f.api('admin','/setup','POST'));
+ const before=f.fetchCount(),boot=ok(f.api('admin','/bootstrap'));
+ assert.equal(f.fetchCount()-before,4);assert.equal(boot.user.role,'ADMIN');assert.equal(boot.catalog.objectives.length,1);assert.equal(boot.evaluations.length,0);
+ const own=ok(f.api('alice','/bootstrap'));assert.deepEqual(own.catalog.users.map(u=>u.id),['legacy-3']);assert.equal(own.catalog.templates.length,0);
+ assert.equal(f.ctx.localApi({action:'performance',adminToken:'invalid',path:'/bootstrap',method:'GET'}).ok,false);
+ });
