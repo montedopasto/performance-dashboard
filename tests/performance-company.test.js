@@ -17,9 +17,9 @@ function fixture(){
  UrlFetchApp:{fetch:(url,opt)=>{
   fetches++;
   const bearer=opt.headers.Authorization.slice(7),who=Object.keys(actor).find(k=>bearer===token(k));if(!who)return response(401,{});
-  if(url.includes('/drive/')){
-    const path=url.split('/drive/')[1];
-    if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id});}
+  if(url.includes('/drive/')||url.includes('/drives/private-drive/')){
+    const path=url.includes('/drives/private-drive/')?url.split('/drives/private-drive/')[1]:url.split('/drive/')[1];
+    if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id,parentReference:{driveId:'private-drive'}});}
     const [,id,operation]=path.split('/'),file=files.get(id);if(!file)return response(404,{});
     const permission=file.permissions.find(p=>p.grantedToV2.user.id===actor[who].id);if(!permission)return response(403,{});
     if(operation==='invite'){if(!permission.roles.includes('write'))return response(403,{});const body=JSON.parse(opt.payload);assert.equal(body.sendInvitation,false);assert.equal(body.requireSignIn,true);const value=body.recipients.map(r=>({id:crypto.randomUUID(),roles:body.roles,grantedToV2:{user:Object.values(actor).find(a=>a.mail===r.email)&&{...Object.values(actor).find(a=>a.mail===r.email),email:r.email}}}));if(!body.retainInheritedPermissions)file.permissions=[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}},...(residualOwner?[{id:'residual-owner',roles:['owner'],grantedToV2:{group:{id:'site-owners'}}}]:[])];file.permissions.push(...value);return response(200,{value});}
@@ -192,7 +192,7 @@ test('private files remove residual site-owner grants while still empty before s
  const f=fixture();f.residualOwner(true);
  const recipients={writers:['admin@company.test'],employeeEmail:'alice@company.test',current:actor.admin};
  const id=f.ctx.performancePrivateFile_(token('admin'),recipients,'read');
- const file=f.files.get(id);assert.deepEqual(file.content,{});
+ assert.equal(id.startsWith('private-drive|'),true);const file=f.files.get(id.split('|')[1]);assert.deepEqual(file.content,{});
  assert.equal(file.permissions.some(p=>p.grantedToV2.group),false);
  assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.admin.id),true);
  assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.alice.id),true);

@@ -1,7 +1,14 @@
 // Individual assessments never enter the shared catalogue list. Files start empty,
 // inheritance is removed and every permission is checked before HR data is written.
 function performanceFileRequest_(path,token,method,body) {
-  const r=UrlFetchApp.fetch('https://graph.microsoft.com/v1.0/sites/'+SITE+'/drive/'+path,{method:method||'get',headers:{Authorization:'Bearer '+token},contentType:'application/json',...(body!==undefined?{payload:JSON.stringify(body)}:{}),muteHttpExceptions:true});
+  let url='https://graph.microsoft.com/v1.0/sites/'+SITE+'/drive/'+path;
+  if(path.startsWith('personal/'))url='https://graph.microsoft.com/v1.0/me/drive/'+path.slice('personal/'.length);
+  else if(path.startsWith('items/')&&path.split('/')[1].includes('|')) {
+    const segments=path.split('/'),[drive,id]=segments[1].split('|');
+    pFail_(drive&&id,'Referência de ficheiro privado inválida.');
+    url='https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(drive)+'/items/'+encodeURIComponent(id)+(segments.length>2?'/'+segments.slice(2).join('/'):'');
+  }
+  const r=UrlFetchApp.fetch(url,{method:method||'get',headers:{Authorization:'Bearer '+token},contentType:'application/json',...(body!==undefined?{payload:JSON.stringify(body)}:{}),muteHttpExceptions:true});
   const status=r.getResponseCode();let data;try{data=JSON.parse(r.getContentText()||'{}');}catch(e){throw new Error('Ficheiro de avaliação inválido.');}
   if(status===403||status===404)return null;
   if(status<200||status>=300)throw new Error('Não foi possível guardar a avaliação privada.');
@@ -20,8 +27,12 @@ function performancePrivateRecipients_(e,users,token) {
   return {writers:emails,employeeEmail:own.length?String(own[0].fields.EmailMicrosoft||'').trim().toLowerCase():'',current};
 }
 function performancePrivateFile_(token,recipients,employeeRole) {
-  const empty=performanceFileRequest_('root:/mdp360-'+Utilities.getUuid()+'.json:/content',token,'put',{});
-  pFail_(empty&&empty.id,'Não foi possível criar o ficheiro privado.');
+  // Site-owned libraries retain group-owner access. Start new assessments in the
+  // creating administrator's private Microsoft drive; persist the drive address so
+  // authorized colleagues use that same drive rather than their own /me drive.
+  const created=performanceFileRequest_('personal/root:/mdp360-'+Utilities.getUuid()+'.json:/content',token,'put',{});
+  pFail_(created?.id&&created.parentReference?.driveId,'Não foi possível criar o ficheiro privado no Microsoft 365.');
+  const empty={id:created.parentReference.driveId+'|'+created.id};
   const grants=[];
   function invite(emails,role,retain){if(!emails.length)return;const result=performanceFileRequest_('items/'+empty.id+'/invite',token,'post',{recipients:emails.map(email=>({email})),roles:[role],requireSignIn:true,sendInvitation:false,retainInheritedPermissions:retain});pFail_(result&&Array.isArray(result.value)&&result.value.length>0&&!result.value.some(p=>p.error),'Não foi possível restringir o acesso à avaliação.');grants.push(...result.value);}
   invite(recipients.writers,'write',false);
