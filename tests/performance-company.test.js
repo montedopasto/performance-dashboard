@@ -95,7 +95,7 @@ test('A broad or inherited file permission prevents writing any individual asses
  });
 test('source enrichment is scoped, repeatable, append-only and preserves manual and approved fields',()=>{
  const f=fixture();ok(f.api('admin','/setup','POST'));const enriched=structuredClone(f.proposals);
- enriched.kpis[0]={...enriched.kpis[0],target:100,unit:'%',direction:'higher',targetText:'Source value'};
+ enriched.kpis[0]={...enriched.kpis[0],target:100,unit:'%',direction:'higher',targetText:'Source value',targetPeriod:'2028-A',definition:'Explicit source definition'};
  enriched.templates[0].objectives[0].criteria[0].target=90;
  f.ctx.performanceSourceEnrichment_=()=>({baseline:f.proposals,enriched});
  assert.equal(f.api('alice','/source-enrichment').ok,false);
@@ -108,4 +108,7 @@ test('source enrichment is scoped, repeatable, append-only and preserves manual 
  assert.equal(ok(f.api('admin','/versions/kpis/k'))[0].target,null);
  update(f,'templates','t',{status:'validation'});enriched.templates[0].objectives[0].criteria[0].target=50;
  assert.equal(ok(f.api('admin','/source-enrichment')).pending.length,0);
+ update(f,'kpis','k',{status:'validation'});update(f,'kpis','k',{status:'approved'});update(f,'kpis','k',{status:'active'});
+ assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2026-A',result:{actual:75,na:false}}).ok,false);
+ assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2028-A',result:{actual:75,na:false}}).ok,true);
 });
