@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const token=who=>'authorized-'+who+'x'.repeat(110);
 const actor={admin:{id:'admin-oid',mail:'admin@company.test'},chief:{id:'chief-oid',mail:'chief@company.test'},alice:{id:'alice-oid',mail:'alice@company.test'},bob:{id:'bob-oid',mail:'bob@company.test'}};
 function fixture(){
- const tables={},props=new Map(),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,fetches=0;
+ const tables={},props=new Map(),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,residualOwner=false,fetches=0;
  const people=Object.entries(actor).map(([name,a],i)=>({id:String(i+1),fields:{NumeroColaborador:i+1,NomeColaborador:name,Funcao:'Known function',EmailMicrosoft:a.mail,TipoUtilizador:name==='admin'?'ADMIN':name==='chief'?'CHEFIA':'COLABORADOR',Ativo:true}}));
  function sheet(name){return {getLastRow:()=>tables[name].length,appendRow:r=>tables[name].push([...r]),setFrozenRows(){},getDataRange:()=>({getValues:()=>tables[name].map(r=>[...r])}),getRange:r=>({setValues:v=>{tables[name][r-1]=[...v[0]];}})};}
  const db={getSheetByName:n=>tables[n]?sheet(n):null,insertSheet:n=>{tables[n]=[];return sheet(n)}};
@@ -17,12 +17,13 @@ function fixture(){
  UrlFetchApp:{fetch:(url,opt)=>{
   fetches++;
   const bearer=opt.headers.Authorization.slice(7),who=Object.keys(actor).find(k=>bearer===token(k));if(!who)return response(401,{});
-  if(url.includes('/drive/')){
-    const path=url.split('/drive/')[1];
-    if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id});}
+  if(url.includes('/drive/')||url.includes('/drives/private-drive/')){
+    const path=url.includes('/drives/private-drive/')?url.split('/drives/private-drive/')[1]:url.split('/drive/')[1];
+    if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id,parentReference:{driveId:'private-drive'}});}
     const [,id,operation]=path.split('/'),file=files.get(id);if(!file)return response(404,{});
     const permission=file.permissions.find(p=>p.grantedToV2.user.id===actor[who].id);if(!permission)return response(403,{});
-    if(operation==='invite'){if(!permission.roles.includes('write'))return response(403,{});const body=JSON.parse(opt.payload);assert.equal(body.sendInvitation,false);assert.equal(body.requireSignIn,true);const value=body.recipients.map(r=>({id:crypto.randomUUID(),roles:body.roles,grantedToV2:{user:Object.values(actor).find(a=>a.mail===r.email)&&{...Object.values(actor).find(a=>a.mail===r.email),email:r.email}}}));if(!body.retainInheritedPermissions)file.permissions=[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}];file.permissions.push(...value);return response(200,{value});}
+    if(operation==='invite'){if(!permission.roles.includes('write'))return response(403,{});const body=JSON.parse(opt.payload);assert.equal(body.sendInvitation,false);assert.equal(body.requireSignIn,true);const value=body.recipients.map(r=>({id:crypto.randomUUID(),roles:body.roles,grantedToV2:{user:Object.values(actor).find(a=>a.mail===r.email)&&{...Object.values(actor).find(a=>a.mail===r.email),email:r.email}}}));if(!body.retainInheritedPermissions)file.permissions=[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}},...(residualOwner?[{id:'residual-owner',roles:['owner'],grantedToV2:{group:{id:'site-owners'}}}]:[])];file.permissions.push(...value);return response(200,{value});}
+    if(operation==='permissions'&&opt.method==='delete'){const pid=decodeURIComponent(path.split('/')[3]);if(pid==='residual-owner'){file.permissions=file.permissions.filter(p=>p.id!==pid);return response(204,{});}return response(403,{});}
     if(operation==='permissions')return response(200,{value:[...file.permissions,...(unsafePermissions?[{id:'broad',roles:['read'],grantedToV2:{siteGroup:{id:'everyone'}}}]:[])]});
     if(operation==='content'){if(opt.method==='put'){if(!permission.roles.includes('write'))return response(403,{});file.content=JSON.parse(opt.payload);return response(200,{id});}return response(200,file.content);}
   }
@@ -42,7 +43,7 @@ function fixture(){
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
- return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
+ return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},residualOwner:flag=>{residualOwner=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
 }
 function ok(r){assert.equal(r.ok,true,r.error);return r.data;}
 function update(f,kind,id,patch){const catalog=ok(f.api('admin','/catalog'));const old=catalog[kind].find(r=>r.id===id);return ok(f.api('admin','/catalog/'+kind+'/'+id,'PUT',{...old,...patch,expectedVersion:old.version}));}
@@ -82,7 +83,7 @@ test('SharePoint chunk storage ignores interrupted versions, preserves old versi
 test('A broad or inherited file permission prevents writing any individual assessment',()=>{
  const f=fixture();ok(f.api('admin','/setup','POST'));f.unsafePermissions(true);
  const fake={employeeId:'legacy-3',employee:{number:'3'}};
- assert.throws(()=>f.ctx.performancePrivateSave_(fake,null,token('admin'),[{id:'legacy-3',number:'3'}],{number:'1',role:'ADMIN'}),/acesso herdado/);
+ assert.throws(()=>f.ctx.performancePrivateSave_(fake,null,token('admin'),[{id:'legacy-3',number:'3'}],{number:'1',role:'ADMIN'}),/restringir|acesso herdado/);
  assert.equal(f.files.size,1);assert.deepEqual([...f.files.values()][0].content,{});
 });
 
@@ -184,4 +185,16 @@ test('private permission checks accept resolved named invitations and SharePoint
   {grantedToV2:{user:{id:'admin-oid'},group:{id:'everyone'}}},
   {grantedToV2:{user:{id:'admin-oid'}},grantedTo:{user:{id:'bob-oid'}}}
  ])assert.equal(allowed(p),false);
+});
+
+
+test('private files remove residual site-owner grants while still empty before storing assessments',()=>{
+ const f=fixture();f.residualOwner(true);
+ const recipients={writers:['admin@company.test'],employeeEmail:'alice@company.test',current:actor.admin};
+ const id=f.ctx.performancePrivateFile_(token('admin'),recipients,'read');
+ assert.equal(id.startsWith('private-drive|'),true);const file=f.files.get(id.split('|')[1]);assert.deepEqual(file.content,{});
+ assert.equal(file.permissions.some(p=>p.grantedToV2.group),false);
+ assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.admin.id),true);
+ assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.alice.id),true);
+ f.unsafePermissions(true);assert.throws(()=>f.ctx.performancePrivateFile_(token('admin'),recipients,'read'),/restringir/);
 });
