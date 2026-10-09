@@ -7,7 +7,7 @@ window.MDPData=(()=>{
   function seed(path,value){cache.set(path,{value:copy(value),expires:Date.now()+ttl});}
   return {clear,async call(token,path,method='GET',body={}){
     if(identity!==token){clear();identity=token;}
-    const read=method==='GET'&&(/^\/(bootstrap|catalog|evaluations|bsc-results|self-assessments)$/.test(path)||path.startsWith('/legacy-history/'));
+    const read=method==='GET'&&(/^\/(bootstrap|catalog|evaluations|bsc-results|self-assessments|strategy-map)$/.test(path)||path.startsWith('/legacy-history/'));
     if(method!=='GET')clear();
     if(read){const saved=cache.get(path);if(saved&&saved.expires>Date.now())return copy(saved.value);if(pending.has(path))return copy(await pending.get(path));}
     const revision=generation;
