@@ -127,3 +127,43 @@ test('company strategy image is private to strategy profiles, admin-editable and
  assert.equal(f.api('admin','/strategy-map','PUT',{name:'Stale',description:'',imageData:png,expectedVersion:1}).ok,false);
  const store=f.ctx.performanceStore_(token('admin'),false);assert.equal(store.versions('strategy-map','company').length,2);assert.equal(store.versions('strategy-map','company')[0].name,'Source map');
 });
+
+test('one-action model activation preserves server workflow, versions and assessment snapshots',async()=>{
+ const f=fixture();ok(f.api('admin','/setup','POST'));
+ f.ctx.window={};f.ctx.structuredClone=structuredClone;
+ vm.runInContext(fs.readFileSync('model-activation.js','utf8'),f.ctx);
+ const models=f.ctx.window.MDPModels;
+ const initial=ok(f.api('admin','/catalog')).templates.find(t=>t.id==='t');
+ const history=[];
+ const persist=b=>{history.push(b.status);return Promise.resolve(ok(f.api('admin','/catalog/templates/t','PUT',b)));};
+ const active=await models.activate(initial,initial.status,persist);
+ assert.equal(active.status,'active');assert.deepEqual(history,['validation','approved','active']);
+ assert.equal(active.version,initial.version+3);
+ assert.equal(active.objectives[0].criteria[0].status,'active');
+ assert.equal(initial.status,'definition');
+ const evaluation=ok(f.api('admin','/evaluations','POST',{employeeId:'legacy-3',templateId:'t',period:'2026-A'}));
+ const changed=structuredClone(active);changed.objectives[0].criteria[0].target=80;
+ history.length=0;
+ const replacement=await models.activate(changed,active.status,persist);
+ assert.deepEqual(history,['definition','validation','approved','active']);
+ assert.equal(replacement.objectives[0].criteria[0].target,80);
+ assert.equal(ok(f.api('admin','/evaluations/'+evaluation.id)).template.objectives[0].criteria[0].target,initial.objectives[0].criteria[0].target);
+ assert.equal(ok(f.api('admin','/versions/templates/t')).length,replacement.version);
+ const forbidden=f.api('alice','/catalog/templates/t','PUT',{...replacement,expectedVersion:replacement.version});assert.equal(forbidden.ok,false);
+});
+
+test('activation names all incomplete criteria before writing and permits retry after a partial save',async()=>{
+ const f=fixture();ok(f.api('admin','/setup','POST'));
+ f.ctx.window={};f.ctx.structuredClone=structuredClone;
+ vm.runInContext(fs.readFileSync('model-activation.js','utf8'),f.ctx);
+ const models=f.ctx.window.MDPModels;
+ let input=ok(f.api('admin','/catalog')).templates.find(t=>t.id==='t');
+ const broken=structuredClone(input);broken.objectives[0].criteria[0].unit='';broken.objectives[0].criteria[0].definition='';broken.objectives[0].criteria[0].direction='higher';broken.objectives[0].criteria[0].target=null;
+ let writes=0;
+ await assert.rejects(models.activate(broken,input.status,()=>{writes++;}),error=>error.message.includes(broken.objectives[0].criteria[0].name)&&error.message.includes('unidade')&&error.message.includes('definição')&&error.message.includes('meta'));
+ assert.equal(writes,0);
+ await assert.rejects(models.activate(input,input.status,async b=>{if(b.status==='approved')throw Error('Temporary failure');return ok(f.api('admin','/catalog/templates/t','PUT',b));},saved=>{input=saved;}),/Temporary failure/);
+ assert.equal(input.status,'validation');
+ const active=await models.activate(input,input.status,b=>Promise.resolve(ok(f.api('admin','/catalog/templates/t','PUT',b))));
+ assert.equal(active.status,'active');
+});
