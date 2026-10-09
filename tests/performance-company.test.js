@@ -37,12 +37,12 @@ function fixture(){
   if(url.endsWith('/lists')&&opt.method==='post'){exists=true;return response(201,{id:'entities-list'});}
   return response(200,{value:[]});
  }}});
- for(const f of ['Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
+ for(const f of ['Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
  const criterion={id:'c',name:'Approved test criterion',group:'result',weight:1,status:'definition',direction:'manual',target:100,unit:'points',definition:'Defined test rule'};
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
- return {api,ctx,records,tables,files,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
+ return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
 }
 function ok(r){assert.equal(r.ok,true,r.error);return r.data;}
 function update(f,kind,id,patch){const catalog=ok(f.api('admin','/catalog'));const old=catalog[kind].find(r=>r.id===id);return ok(f.api('admin','/catalog/'+kind+'/'+id,'PUT',{...old,...patch,expectedVersion:old.version}));}
@@ -93,3 +93,22 @@ test('A broad or inherited file permission prevents writing any individual asses
  const own=ok(f.api('alice','/bootstrap'));assert.deepEqual(own.catalog.users.map(u=>u.id),['legacy-3']);assert.equal(own.catalog.templates.length,0);
  assert.equal(f.ctx.localApi({action:'performance',adminToken:'invalid',path:'/bootstrap',method:'GET'}).ok,false);
  });
+test('source enrichment is scoped, repeatable, append-only and preserves manual and approved fields',()=>{
+ const f=fixture();ok(f.api('admin','/setup','POST'));const enriched=structuredClone(f.proposals);
+ enriched.kpis[0]={...enriched.kpis[0],target:100,unit:'%',direction:'higher',targetText:'Source value',targetPeriod:'2028-A',definition:'Explicit source definition'};
+ enriched.templates[0].objectives[0].criteria[0].target=90;
+ f.ctx.performanceSourceEnrichment_=()=>({baseline:f.proposals,enriched});
+ assert.equal(f.api('alice','/source-enrichment').ok,false);
+ update(f,'kpis','k',{target:75});
+ const plan=ok(f.api('admin','/source-enrichment'));assert.equal(plan.pending.length,2);
+ const result=ok(f.api('admin','/source-enrichment','POST',{items:plan.pending}));assert.equal(result.saved.length,2);
+ const cat=ok(f.api('admin','/catalog'));assert.equal(cat.kpis[0].target,75);assert.equal(cat.kpis[0].unit,'%');assert.equal(cat.kpis[0].targetPeriod,undefined);assert.equal(cat.kpis[0].status,'definition');
+ assert.equal(cat.templates[0].objectives[0].criteria[0].target,90);
+ assert.equal(ok(f.api('admin','/source-enrichment')).pending.length,0);
+ assert.equal(ok(f.api('admin','/versions/kpis/k'))[0].target,null);
+ update(f,'templates','t',{status:'validation'});enriched.templates[0].objectives[0].criteria[0].target=50;
+ assert.equal(ok(f.api('admin','/source-enrichment')).pending.length,0);
+ update(f,'kpis','k',{targetPeriod:'2028-A'});update(f,'kpis','k',{status:'validation'});update(f,'kpis','k',{status:'approved'});update(f,'kpis','k',{status:'active'});
+ assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2026-A',result:{actual:75,na:false}}).ok,false);
+ assert.equal(f.api('admin','/bsc-results','POST',{kpiId:'k',period:'2028-A',result:{actual:75,na:false}}).ok,true);
+});
