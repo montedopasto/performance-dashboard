@@ -18,10 +18,8 @@ function performanceIdentity_(token) {
   if(people.filter(i=>String(i.fields.NumeroColaborador)===String(f.NumeroColaborador)).length!==1)throw new Error('O número de colaborador está repetido no registo da empresa.');
   return {id:'legacy-'+String(f.NumeroColaborador),oid:me.id,name:f.NomeColaborador,username:String(f.NumeroColaborador),number:String(f.NumeroColaborador),role:['ADMIN','CHEFIA','DIRECAO'].includes(f.TipoUtilizador)?f.TipoUtilizador:'COLABORADOR',active:true,roleId:'',departmentId:'',managerId:''};
 }
-function performanceStore_(token,create) {
-  let page='sites/'+SITE+'/lists?$select=id,displayName',available=[];
-  while(page){const response=performanceGraph_(page,token);available.push(...(response.data.value||[]));const next=response.data['@odata.nextLink'];pFail_(!next||next.startsWith('https://graph.microsoft.com/v1.0/'),'Endereço de paginação inválido.');page=next?next.slice('https://graph.microsoft.com/v1.0/'.length):null;}
-  let info={data:available.find(l=>l.displayName===PERFORMANCE_LIST)},initialized=!!info.data;
+function performanceStore_(token,create,verifiedIdentity) {
+  let info=performanceGraph_('sites/'+SITE+'/lists/'+PERFORMANCE_LIST+'?$select=id,displayName',token),initialized=info.status!==404;
   if(!initialized&&create){info=performanceGraph_('sites/'+SITE+'/lists',token,'post',{displayName:PERFORMANCE_LIST,list:{template:'genericList'},columns:[{name:'EntityKind',text:{}},{name:'EntityId',text:{}},{name:'EntityVersion',number:{decimalPlaces:'none'}},{name:'Payload',text:{allowMultipleLines:true,textType:'plain'}}]});initialized=true;}
   const raw=initialized?list_(info.data.id,token):[],records=[],bundles={};
   for(const item of raw){
@@ -39,7 +37,7 @@ function performanceStore_(token,create) {
     const body=JSON.parse(json);if(body.id!==f.EntityId||body.version!==Number(f.EntityVersion))throw new Error('Metadados de versão inconsistentes.');
     records.push({kind:f.EntityKind,id:f.EntityId,version:Number(f.EntityVersion),body,itemId});
   }
-  const identity=performanceIdentity_(token);
+  const identity=verifiedIdentity||performanceIdentity_(token);
   const pointer=id=>records.filter(r=>r.kind==='evaluations'&&r.id===id).sort((a,b)=>a.version-b.version).map(r=>r.body).pop();
   const history=(kind,id)=>{if(kind==='evaluations'){const p=pointer(id);if(!p)return [];pFail_(p.format==='mdp360-private-v1','A avaliação está num armazenamento sem isolamento. Migração necessária.');return performancePrivateLoad_(p,token,identity);}return records.filter(r=>r.kind===kind&&r.id===id).sort((a,b)=>a.version-b.version).map(r=>JSON.parse(JSON.stringify(r.body)));};
   const get=(kind,id)=>{const body=history(kind,id).pop()||null;return kind==='evaluations'&&body?performanceMergeSelf_(performancePrivateMerge_(body,pointer(id),token)):body;};
@@ -73,7 +71,7 @@ function performanceStore_(token,create) {
 }
 function performanceSetup_(token,identity) {
   pFail_(identity.role==='ADMIN','Acesso reservado à administração.',403);
-  const store=performanceStore_(token,true);
+  const store=performanceStore_(token,true,identity);
   const proposals=performanceProposals_();
   for(const kind of ['objectives','kpis','roles','templates'])for(const original of proposals[kind]){
     const row=JSON.parse(JSON.stringify(original));
@@ -99,10 +97,16 @@ function performanceDispatch_(request) {
   pFail_(JSON.stringify(request.body||{}).length<1000000,'Pedido demasiado extenso.');
   const identity=performanceIdentity_(request.adminToken);
   if(request.path==='/setup'&&request.method==='POST')return performanceSetup_(request.adminToken,identity);
-  const store=performanceStore_(request.adminToken,false);
+  const store=performanceStore_(request.adminToken,false,identity);
   const saved=store.get('users',identity.id)||store.list('users').find(e=>e.number===identity.number);
   const u={...identity,...(saved?{id:saved.id,roleId:saved.roleId,departmentId:saved.departmentId,managerId:saved.managerId,version:saved.version}:{}),initialized:store.initialized};
   pFail_(!saved||saved.active,'O perfil de avaliação está inativo.',403);
+  if(request.path==='/bootstrap'&&(!request.method||request.method==='GET')){
+    const session={user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
+    if(!store.initialized)return session;
+    const read=path=>performanceApi_({...request,path,method:'GET'},u,store);
+    return {...session,catalog:read('/catalog'),evaluations:read('/evaluations')};
+  }
   if(request.path==='/me')return {user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
   pFail_(store.initialized,'A estrutura da empresa ainda não está inicializada.');
   return performanceApi_(request,u,store);
