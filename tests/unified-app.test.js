@@ -33,3 +33,15 @@ test('Unified public clients compile and old entry URLs lead to the new workspac
   for(const path of ['app.js','transport.js','microsoft-auth.js','local-access.js'])assert.doesNotThrow(()=>new vm.Script(fs.readFileSync(path,'utf8')));
   const dashboard=fs.readFileSync('dashboard.html','utf8');assert.match(dashboard,/index.html#inicio/);assert.doesNotMatch(dashboard,/KPIsDashboard|renovarToken|68 Pontos/);
 });
+test('navigation handles only its buttons and never intercepts clicks bubbling from form controls',()=>{
+  const body={dataset:{page:'overview'},classList:{remove(){}},onclick:null};
+  const navButton={dataset:{page:'corporate'},onclick:null};
+  const nodes={app:{},nav:{},session:{},logout:{},refreshData:{}};
+  const document={body,querySelector:s=>nodes[s.slice(1)],querySelectorAll:s=>s==='#nav button[data-page]'?[navButton]:s==='[data-page]'?[body,navButton]:[]};
+  const source=fs.readFileSync('app.js','utf8').split('const initialPage=')[0];
+  const ctx={document,window:{},history:{},Map,structuredClone};vm.runInNewContext(source,ctx);
+  vm.runInNewContext("me={role:'ADMIN',name:'Test admin'};mountNav();",ctx);
+  assert.equal(typeof navButton.onclick,'function');assert.equal(body.onclick,null);
+  // Native selects, checkboxes, input focus and anchors retain their default action.
+  for(const tag of ['SELECT','INPUT','A']){let prevented=false;const event={target:{tagName:tag},preventDefault:()=>prevented=true};body.onclick?.(event);assert.equal(prevented,false);}
+});
