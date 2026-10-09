@@ -109,5 +109,6 @@ function performanceDispatch_(request) {
   }
   if(request.path==='/me')return {user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
   pFail_(store.initialized,'A estrutura da empresa ainda não está inicializada.');
+  if(request.path==='/source-enrichment')return performanceSourceImport_(request,u,store);
   return performanceApi_(request,u,store);
 }
