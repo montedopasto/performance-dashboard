@@ -110,6 +110,7 @@ function performanceDispatch_(request) {
   if(request.path==='/me')return {user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
   pFail_(store.initialized,'A estrutura da empresa ainda não está inicializada.');
   if(request.path==='/source-enrichment')return performanceSourceImport_(request,u,store);
+  if(request.path==='/central-source/preview')return performanceCentralApi_(request,u);
   if(request.path.startsWith('/data-source'))return performanceExcelApi_(request,u,store);
   return performanceApi_(request,u,store);
 }
