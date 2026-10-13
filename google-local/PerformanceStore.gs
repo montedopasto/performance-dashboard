@@ -105,10 +105,11 @@ function performanceDispatch_(request) {
     const session={user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
     if(!store.initialized)return session;
     const read=path=>performanceApi_({...request,path,method:'GET'},u,store);
-    return {...session,catalog:read('/catalog'),evaluations:read('/evaluations')};
+    return {...session,catalog:read('/catalog'),evaluations:read('/evaluations'),dataSource:u.role==='ADMIN'?store.get('data-source','company'):null};
   }
   if(request.path==='/me')return {user:pPublicUser_(u),csrf:'rpc-token',mustChange:false,hasLocalPin:false,initialized:store.initialized};
   pFail_(store.initialized,'A estrutura da empresa ainda não está inicializada.');
   if(request.path==='/source-enrichment')return performanceSourceImport_(request,u,store);
+  if(request.path.startsWith('/data-source'))return performanceExcelApi_(request,u,store);
   return performanceApi_(request,u,store);
 }
