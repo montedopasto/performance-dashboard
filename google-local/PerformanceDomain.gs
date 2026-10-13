@@ -28,6 +28,7 @@ function pValidateTemplate_(t) {
 }
 function pAttainment_(c, result) {
   if(c.status !== 'active' || !result || result.na || !Number.isFinite(result.actual)) return null;
+  if(result.source?.type==='central-excel'&&result.source.provisional)return null;
   const a=result.actual; if(a<0) return null;
   if(c.direction==='manual') return a<=100 ? a : null;
   if(c.direction==='zero') return a===0 ? 100 : 0;
