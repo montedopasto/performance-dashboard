@@ -210,6 +210,10 @@ test('implicit owner claim is limited to the exact company group and encrypted f
  assert.equal(JSON.stringify(sealed).includes('private assessment'),false);
  assert.equal(JSON.stringify(sealed).includes('alice'),false);
  assert.deepEqual(JSON.parse(JSON.stringify(f.ctx.performancePrivateOpen_('file-1',sealed))),confidential);
+ const key=crypto.createHmac('sha256',f.ctx.pepper_()).update('mdp360-file-mac-v1:encryption-key').digest();
+ const decipher=crypto.createDecipheriv('aes-256-cbc',key,Buffer.from(sealed.iv,'hex'));
+ assert.deepEqual(JSON.parse(Buffer.concat([decipher.update(Buffer.from(sealed.ciphertext,'base64')),decipher.final()]).toString('utf8')),confidential);
+ assert.equal(sealed.mac,crypto.createHmac('sha256',f.ctx.pepper_()).update('mdp360-file-mac-v1:file-1:'+sealed.iv+':'+sealed.ciphertext).digest('hex'));
  assert.notEqual(sealed.iv,f.ctx.performancePrivateSeal_('file-1',confidential).iv);
  assert.throws(()=>f.ctx.performancePrivateOpen_('file-2',sealed),/integridade/);
  assert.throws(()=>f.ctx.performancePrivateOpen_('file-1',{...sealed,ciphertext:'A'+sealed.ciphertext.slice(1)}),/integridade/);
