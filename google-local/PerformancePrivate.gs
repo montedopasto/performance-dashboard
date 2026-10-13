@@ -1,13 +1,7 @@
 // Individual assessments never enter the shared catalogue list. Files start empty,
 // inheritance is removed and every permission is checked before HR data is written.
 function performanceFileRequest_(path,token,method,body) {
-  let url='https://graph.microsoft.com/v1.0/sites/'+SITE+'/drive/'+path;
-  if(path.startsWith('personal/'))url='https://graph.microsoft.com/v1.0/me/drive/'+path.slice('personal/'.length);
-  else if(path.startsWith('items/')&&path.split('/')[1].includes('|')) {
-    const segments=path.split('/'),[drive,id]=segments[1].split('|');
-    pFail_(drive&&id,'Referência de ficheiro privado inválida.');
-    url='https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(drive)+'/items/'+encodeURIComponent(id)+(segments.length>2?'/'+segments.slice(2).join('/'):'');
-  }
+  const url='https://graph.microsoft.com/v1.0/sites/'+SITE+'/drive/'+path;
   const r=UrlFetchApp.fetch(url,{method:method||'get',headers:{Authorization:'Bearer '+token},contentType:'application/json',...(body!==undefined?{payload:JSON.stringify(body)}:{}),muteHttpExceptions:true});
   const status=r.getResponseCode();let data;try{data=JSON.parse(r.getContentText()||'{}');}catch(e){throw new Error('Ficheiro de avaliação inválido.');}
   if(status===403||status===404)return null;
@@ -27,12 +21,8 @@ function performancePrivateRecipients_(e,users,token) {
   return {writers:emails,employeeEmail:own.length?String(own[0].fields.EmailMicrosoft||'').trim().toLowerCase():'',current};
 }
 function performancePrivateFile_(token,recipients,employeeRole) {
-  // Site-owned libraries retain group-owner access. Start new assessments in the
-  // creating administrator's private Microsoft drive; persist the drive address so
-  // authorized colleagues use that same drive rather than their own /me drive.
-  const created=performanceFileRequest_('personal/root:/mdp360-'+Utilities.getUuid()+'.json:/content',token,'put',{});
-  pFail_(created?.id&&created.parentReference?.driveId,'Não foi possível criar o ficheiro privado no Microsoft 365.');
-  const empty={id:created.parentReference.driveId+'|'+created.id};
+  const empty=performanceFileRequest_('root:/mdp360-'+Utilities.getUuid()+'.json:/content',token,'put',{});
+  pFail_(empty&&empty.id,'Não foi possível preparar o ficheiro privado.');
   const grants=[];
   function invite(emails,role,retain){if(!emails.length)return;const result=performanceFileRequest_('items/'+empty.id+'/invite',token,'post',{recipients:emails.map(email=>({email})),roles:[role],requireSignIn:true,sendInvitation:false,retainInheritedPermissions:retain});pFail_(result&&Array.isArray(result.value)&&result.value.length>0&&!result.value.some(p=>p.error),'Não foi possível restringir o acesso à avaliação.');grants.push(...result.value);}
   invite(recipients.writers,'write',false);
@@ -43,13 +33,13 @@ function performancePrivateFile_(token,recipients,employeeRole) {
   pFail_(actual&&Array.isArray(actual.value)&&actual.value.length>0,'Não foi possível verificar as permissões privadas.');
   // SharePoint may retain the site owners group even after invite removes inherited
   // permissions. Restrict only this newly-created, still-empty file, then verify again.
-  for(const p of actual.value)if(!performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails)) {
+  for(const p of actual.value)if(!performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails)&&!performanceImplicitOwnerPermission_(p)) {
     pFail_(p.id&&!p.inheritedFrom,'O SharePoint não permite restringir os acessos herdados da avaliação.');
     pFail_(performanceFileRequest_('items/'+empty.id+'/permissions/'+encodeURIComponent(p.id),token,'delete'),'O SharePoint não permitiu restringir o acesso ao ficheiro da avaliação.');
   }
   actual=performanceFileRequest_('items/'+empty.id+'/permissions',token);
   pFail_(actual&&Array.isArray(actual.value)&&actual.value.length>0,'Não foi possível confirmar as permissões privadas.');
-  for(const p of actual.value)pFail_(performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails),'O ficheiro mantém acesso herdado ou acesso não autorizado. Não foi escrita informação de avaliação.');
+  for(const p of actual.value)pFail_(performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails)||performanceImplicitOwnerPermission_(p),'O ficheiro mantém acesso herdado ou acesso não autorizado. Não foi escrita informação de avaliação.');
   return empty.id;
 }
 function performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails) {
@@ -67,8 +57,34 @@ function performancePrivatePermissionAllowed_(p,allowedIds,allowedEmails) {
     return allowedIds.includes(x.user.id)||allowedEmails.includes(email)||!!membership&&allowedEmails.includes(membership);
   });
 }
-function performancePrivateRead_(id,token){return id?performanceFileRequest_('items/'+id+'/content',token):null;}
-function performancePrivateWrite_(id,data,token){pFail_(performanceFileRequest_('items/'+id+'/content',token,'put',data),'Sem permissão para guardar a avaliação privada.');}
+// Graph reports the M365 site administrators even when the item has unique ACLs.
+// This exact implicit owner claim is unavoidable. Its file access is safe only
+// because all nonempty private payloads are encrypted and authenticated server-side.
+function performanceImplicitOwnerPermission_(p) {
+  const site='montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154',id='c5f2ff7b-95a0-4b74-8b4e-16affc3f3fe3';
+  if(SITE!==site||p.link||p.invitation||p.inheritedFrom||!Array.isArray(p.roles)||p.roles.length!==1||p.roles[0]!=='owner'||p.grantedToV2?.group?.id!==id)return false;
+  const principals=[p.grantedToV2,p.grantedTo,...(p.grantedToIdentitiesV2||[]),...(p.grantedToIdentities||[])].filter(Boolean);
+  return principals.every(x=>!x.application&&!x.siteGroup&&(x.group?.id===id||x.user?.id===id)&&(!x.siteUser||String(x.siteUser.loginName||'').toLowerCase()==='c:0o.c|federateddirectoryclaimprovider|'+id+'_o'));
+}
+function performancePrivateMac_(text){return Utilities.computeHmacSha256Signature('mdp360-file-mac-v1:'+text,pepper_(),Utilities.Charset.UTF_8).map(b=>('0'+(b&255).toString(16)).slice(-2)).join('');}
+function performancePrivateSeal_(id,data) {
+  const key=CryptoJS.enc.Hex.parse(performancePrivateMac_('encryption-key'));
+  const iv=CryptoJS.enc.Hex.parse(performancePrivateMac_('iv:'+Utilities.getUuid()+Utilities.getUuid()).slice(0,32));
+  const ciphertext=CryptoJS.AES.encrypt(JSON.stringify(data),key,{iv}).ciphertext.toString(CryptoJS.enc.Base64);
+  const sealed={format:'mdp360-encrypted-v1',iv:iv.toString(),ciphertext};
+  sealed.mac=performancePrivateMac_(id+':'+sealed.iv+':'+ciphertext);return sealed;
+}
+function performancePrivateOpen_(id,sealed) {
+  if(!sealed||Object.keys(sealed).length===0)return sealed;
+  pFail_(sealed.format==='mdp360-encrypted-v1'&&/^[a-f0-9]{32}$/.test(sealed.iv||'')&&/^[a-f0-9]{64}$/.test(sealed.mac||'')&&typeof sealed.ciphertext==='string'&&sealed.ciphertext.length<12000000&&/^[A-Za-z0-9+/]+={0,2}$/.test(sealed.ciphertext),'Ficheiro privado inválido.');
+  const expected=performancePrivateMac_(id+':'+sealed.iv+':'+sealed.ciphertext);let mismatch=0;
+  for(let i=0;i<64;i++)mismatch|=expected.charCodeAt(i)^sealed.mac.charCodeAt(i);
+  pFail_(mismatch===0,'O ficheiro de avaliação não passou a verificação de integridade.');
+  try {return JSON.parse(CryptoJS.AES.decrypt({ciphertext:CryptoJS.enc.Base64.parse(sealed.ciphertext)},CryptoJS.enc.Hex.parse(performancePrivateMac_('encryption-key')),{iv:CryptoJS.enc.Hex.parse(sealed.iv)}).toString(CryptoJS.enc.Utf8));}
+  catch(e){throw new Error('Não foi possível ler o ficheiro privado.');}
+}
+function performancePrivateRead_(id,token){return id?performancePrivateOpen_(id,performanceFileRequest_('items/'+id+'/content',token)):null;}
+function performancePrivateWrite_(id,data,token){pFail_(performanceFileRequest_('items/'+id+'/content',token,'put',performancePrivateSeal_(id,data)),'Sem permissão para guardar a avaliação privada.');}
 function performancePrivateLoad_(pointer,token,identity) {
   const master=performancePrivateRead_(pointer.master,token);
   if(master&&Array.isArray(master.versions))return master.versions;

@@ -93,7 +93,7 @@ O portal Google foi inicializado e publicado. O endereço `/exec` está configur
 
 ## Módulos corporativos no Apps Script
 
-O projeto privado inclui `Código.gs` (Code, PerformanceDomain, PerformanceApi, PerformanceStore, PerformancePrivate e PerformanceLocal), `Bcrypt.gs`, `Portal.html` e `Performance.html`. Configure `LOCAL_DB_ID` e `COMPANY_SITE_ID` nas propriedades privadas do projeto (ou injete os valores apenas no bundle privado de publicação). Esses identificadores não constam no código público. A função privada `performanceProposals_` é incluída apenas no projeto Google, a partir de `docs/private-proposals.gs`, ignorado pelo Git. Nunca copie o catálogo estratégico para o repositório público.
+O projeto privado inclui `Código.gs` (Code, PerformanceDomain, PerformanceApi, PerformanceStore, PerformancePrivate, PerformanceCrypto e PerformanceLocal), `Bcrypt.gs`, `Portal.html` e `Performance.html`. Configure `LOCAL_DB_ID` e `COMPANY_SITE_ID` nas propriedades privadas do projeto (ou injete os valores apenas no bundle privado de publicação). Esses identificadores não constam no código público. A função privada `performanceProposals_` é incluída apenas no projeto Google, a partir de `docs/private-proposals.gs`, ignorado pelo Git. Nunca copie o catálogo estratégico para o repositório público.
 
 A preparação, reservada a ADMIN Microsoft, cria `MDP360Entities` no SharePoint e importa os objetivos, indicadores e quatro modelos dos PowerPoints em definição. Importa os colaboradores reais existentes sem criar credenciais. Não ativa indicadores, não publica avaliações e não preenche funções ainda em desenho.
 
@@ -102,3 +102,8 @@ O catálogo e as versões BSC ficam nessa lista. Os resultados individuais nunca
 A chefia é atribuída antes de criar avaliações. A atribuição fica bloqueada quando existem avaliações, para conservar o acesso e a responsabilidade históricos. Reatribuição de avaliações existentes requer uma operação futura de transferência e revisão das permissões.
 
 As avaliações antigas são consultadas nas listas originais com os valores históricos, sem recalcular com os modelos atuais. A aplicação anterior, o radar e os relatórios permanecem disponíveis no GitHub Pages.
+
+
+As avaliações individuais são guardadas no SharePoint como envelopes AES-256-CBC com HMAC-SHA-256 (encrypt-then-MAC), ligados ao ID do ficheiro. As chaves são derivadas com separação de domínio do segredo privado PEPPER existente no Apps Script; nunca são enviadas ao browser ou ao SharePoint. A propriedade PEPPER tem de ser preservada e incluída nas cópias de segurança privadas do serviço. O IV é novo em cada gravação. A leitura valida o MAC antes de desencriptar. O único grupo implícito aceite é o grupo exato de proprietários deste site, apenas com a função owner, porque a Microsoft o devolve mesmo para itens com ACL exclusiva. Outros grupos, links, herança e identidades desconhecidas continuam bloqueados. Os controlos de acesso da API, publicação e histórico mantêm-se. Ficheiros vazios de tentativas anteriores continuam válidos; conteúdo privado sem envelope exige migração explícita e não é aceite silenciosamente.
+
+`google-local/PerformanceCrypto.gs` contém os módulos AES necessários do CryptoJS 4.2.0, com licença MIT em `google-local/CRYPTOJS-LICENSE.txt`. O runtime Apps Script não dispõe de WebCrypto; todos os IVs e chaves são fornecidos explicitamente, sem usar o gerador aleatório do CryptoJS.
