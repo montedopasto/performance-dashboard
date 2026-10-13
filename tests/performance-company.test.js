@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const token=who=>'authorized-'+who+'x'.repeat(110);
 const actor={admin:{id:'admin-oid',mail:'admin@company.test'},chief:{id:'chief-oid',mail:'chief@company.test'},alice:{id:'alice-oid',mail:'alice@company.test'},bob:{id:'bob-oid',mail:'bob@company.test'}};
 function fixture(){
- const tables={},props=new Map(),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,fetches=0;
+ const tables={},props=new Map([['COMPANY_SITE_ID','montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154']]),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,residualOwner=false,fetches=0;
  const people=Object.entries(actor).map(([name,a],i)=>({id:String(i+1),fields:{NumeroColaborador:i+1,NomeColaborador:name,Funcao:'Known function',EmailMicrosoft:a.mail,TipoUtilizador:name==='admin'?'ADMIN':name==='chief'?'CHEFIA':'COLABORADOR',Ativo:true}}));
  function sheet(name){return {getLastRow:()=>tables[name].length,appendRow:r=>tables[name].push([...r]),setFrozenRows(){},getDataRange:()=>({getValues:()=>tables[name].map(r=>[...r])}),getRange:r=>({setValues:v=>{tables[name][r-1]=[...v[0]];}})};}
  const db={getSheetByName:n=>tables[n]?sheet(n):null,insertSheet:n=>{tables[n]=[];return sheet(n)}};
@@ -21,8 +21,9 @@ function fixture(){
     const path=url.split('/drive/')[1];
     if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id});}
     const [,id,operation]=path.split('/'),file=files.get(id);if(!file)return response(404,{});
-    const permission=file.permissions.find(p=>p.grantedToV2.user.id===actor[who].id);if(!permission)return response(403,{});
-    if(operation==='invite'){if(!permission.roles.includes('write'))return response(403,{});const body=JSON.parse(opt.payload);assert.equal(body.sendInvitation,false);assert.equal(body.requireSignIn,true);const value=body.recipients.map(r=>({id:crypto.randomUUID(),roles:body.roles,grantedToV2:{user:Object.values(actor).find(a=>a.mail===r.email)&&{...Object.values(actor).find(a=>a.mail===r.email),email:r.email}}}));if(!body.retainInheritedPermissions)file.permissions=[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}];file.permissions.push(...value);return response(200,{value});}
+    const permission=file.permissions.find(p=>p.grantedToV2.user?.id===actor[who].id);if(!permission)return response(403,{});
+    if(operation==='invite'){if(!permission.roles.includes('write'))return response(403,{});const body=JSON.parse(opt.payload);assert.equal(body.sendInvitation,false);assert.equal(body.requireSignIn,true);const value=body.recipients.map(r=>({id:crypto.randomUUID(),roles:body.roles,grantedToV2:{user:Object.values(actor).find(a=>a.mail===r.email)&&{...Object.values(actor).find(a=>a.mail===r.email),email:r.email}}}));if(!body.retainInheritedPermissions)file.permissions=[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}},...(residualOwner?[{id:'residual-owner',roles:['owner'],grantedToV2:{group:{id:residualOwner==='implicit'?'c5f2ff7b-95a0-4b74-8b4e-16affc3f3fe3':'site-owners'}}}]:[])];file.permissions.push(...value);return response(200,{value});}
+    if(operation==='permissions'&&opt.method==='delete'){const pid=decodeURIComponent(path.split('/')[3]);if(pid==='residual-owner'){file.permissions=file.permissions.filter(p=>p.id!==pid);return response(204,{});}return response(403,{});}
     if(operation==='permissions')return response(200,{value:[...file.permissions,...(unsafePermissions?[{id:'broad',roles:['read'],grantedToV2:{siteGroup:{id:'everyone'}}}]:[])]});
     if(operation==='content'){if(opt.method==='put'){if(!permission.roles.includes('write'))return response(403,{});file.content=JSON.parse(opt.payload);return response(200,{id});}return response(200,file.content);}
   }
@@ -37,12 +38,12 @@ function fixture(){
   if(url.endsWith('/lists')&&opt.method==='post'){exists=true;return response(201,{id:'entities-list'});}
   return response(200,{value:[]});
  }}});
- for(const f of ['Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
+ for(const f of ['PerformanceCrypto.gs','Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
  const criterion={id:'c',name:'Approved test criterion',group:'result',weight:1,status:'definition',direction:'manual',target:100,unit:'points',definition:'Defined test rule'};
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
- return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
+ return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},residualOwner:flag=>{residualOwner=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
 }
 function ok(r){assert.equal(r.ok,true,r.error);return r.data;}
 function update(f,kind,id,patch){const catalog=ok(f.api('admin','/catalog'));const old=catalog[kind].find(r=>r.id===id);return ok(f.api('admin','/catalog/'+kind+'/'+id,'PUT',{...old,...patch,expectedVersion:old.version}));}
@@ -82,7 +83,7 @@ test('SharePoint chunk storage ignores interrupted versions, preserves old versi
 test('A broad or inherited file permission prevents writing any individual assessment',()=>{
  const f=fixture();ok(f.api('admin','/setup','POST'));f.unsafePermissions(true);
  const fake={employeeId:'legacy-3',employee:{number:'3'}};
- assert.throws(()=>f.ctx.performancePrivateSave_(fake,null,token('admin'),[{id:'legacy-3',number:'3'}],{number:'1',role:'ADMIN'}),/acesso herdado/);
+ assert.throws(()=>f.ctx.performancePrivateSave_(fake,null,token('admin'),[{id:'legacy-3',number:'3'}],{number:'1',role:'ADMIN'}),/restringir|acesso herdado/);
  assert.equal(f.files.size,1);assert.deepEqual([...f.files.values()][0].content,{});
 });
 
@@ -184,4 +185,49 @@ test('private permission checks accept resolved named invitations and SharePoint
   {grantedToV2:{user:{id:'admin-oid'},group:{id:'everyone'}}},
   {grantedToV2:{user:{id:'admin-oid'}},grantedTo:{user:{id:'bob-oid'}}}
  ])assert.equal(allowed(p),false);
+});
+
+
+test('private files remove residual site-owner grants while still empty before storing assessments',()=>{
+ const f=fixture();f.residualOwner(true);
+ const recipients={writers:['admin@company.test'],employeeEmail:'alice@company.test',current:actor.admin};
+ const id=f.ctx.performancePrivateFile_(token('admin'),recipients,'read');
+ const file=f.files.get(id);assert.deepEqual(file.content,{});
+ assert.equal(file.permissions.some(p=>p.grantedToV2.group),false);
+ assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.admin.id),true);
+ assert.equal(file.permissions.some(p=>p.grantedToV2.user.id===actor.alice.id),true);
+ f.unsafePermissions(true);assert.throws(()=>f.ctx.performancePrivateFile_(token('admin'),recipients,'read'),/restringir/);
+});
+
+
+test('implicit owner claim is limited to the exact company group and encrypted files remain unreadable',()=>{
+ const f=fixture(),id='c5f2ff7b-95a0-4b74-8b4e-16affc3f3fe3';
+ const owner={roles:['owner'],grantedToV2:{group:{id},siteUser:{loginName:'c:0o.c|federateddirectoryclaimprovider|'+id+'_o'}},grantedTo:{user:{id}}};
+ assert.equal(f.ctx.performanceImplicitOwnerPermission_(owner),true);
+ for(const p of [{...owner,roles:['write']},{...owner,link:{}},{...owner,inheritedFrom:{}},{...owner,grantedTo:{user:{id:'other'}}},{...owner,grantedToV2:{group:{id:'other'}}}])assert.equal(f.ctx.performanceImplicitOwnerPermission_(p),false);
+ const confidential={versions:[{employeeId:'alice',score:75,comment:'private assessment'}]};
+ const sealed=JSON.parse(JSON.stringify(f.ctx.performancePrivateSeal_('file-1',confidential)));
+ assert.equal(JSON.stringify(sealed).includes('private assessment'),false);
+ assert.equal(JSON.stringify(sealed).includes('alice'),false);
+ assert.deepEqual(JSON.parse(JSON.stringify(f.ctx.performancePrivateOpen_('file-1',sealed))),confidential);
+ const key=crypto.createHmac('sha256',f.ctx.pepper_()).update('mdp360-file-mac-v1:encryption-key').digest();
+ const decipher=crypto.createDecipheriv('aes-256-cbc',key,Buffer.from(sealed.iv,'hex'));
+ assert.deepEqual(JSON.parse(Buffer.concat([decipher.update(Buffer.from(sealed.ciphertext,'base64')),decipher.final()]).toString('utf8')),confidential);
+ assert.equal(sealed.mac,crypto.createHmac('sha256',f.ctx.pepper_()).update('mdp360-file-mac-v1:file-1:'+sealed.iv+':'+sealed.ciphertext).digest('hex'));
+ assert.notEqual(sealed.iv,f.ctx.performancePrivateSeal_('file-1',confidential).iv);
+ assert.throws(()=>f.ctx.performancePrivateOpen_('file-2',sealed),/integridade/);
+ assert.throws(()=>f.ctx.performancePrivateOpen_('file-1',{...sealed,ciphertext:'A'+sealed.ciphertext.slice(1)}),/integridade/);
+ assert.throws(()=>f.ctx.performancePrivateOpen_('file-1',{...sealed,iv:'0'.repeat(32)}),/integridade/);
+ assert.throws(()=>f.ctx.performancePrivateOpen_('file-1',confidential),/inválido/);
+});
+
+
+test('SharePoint implicit owners do not block a draft and only ciphertext is stored',()=>{
+ const f=fixture();f.residualOwner('implicit');
+ const id=f.ctx.performancePrivateFile_(token('admin'),{writers:['admin@company.test'],employeeEmail:'alice@company.test',current:actor.admin},'read');
+ f.ctx.performancePrivateWrite_(id,{versions:[{comment:'confidential detail'}]},token('admin'));
+ const file=f.files.get(id);assert.equal(file.permissions.some(p=>p.grantedToV2.group),true);
+ assert.equal(file.content.format,'mdp360-encrypted-v1');assert.equal(JSON.stringify(file.content).includes('confidential detail'),false);
+ assert.equal(f.ctx.performancePrivateRead_(id,token('admin')).versions[0].comment,'confidential detail');
+ assert.equal(f.ctx.performancePrivateRead_(id,token('bob')),null);
 });
