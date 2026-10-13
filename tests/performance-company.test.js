@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 const token=who=>'authorized-'+who+'x'.repeat(110);
 const actor={admin:{id:'admin-oid',mail:'admin@company.test'},chief:{id:'chief-oid',mail:'chief@company.test'},alice:{id:'alice-oid',mail:'alice@company.test'},bob:{id:'bob-oid',mail:'bob@company.test'}};
-function fixture(){
+function fixture(options={}){
  const tables={},props=new Map([['COMPANY_SITE_ID','montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154']]),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,residualOwner=false,fetches=0,excelRows=[],excelCatalog=[],excelTag='tag-1';
  const people=Object.entries(actor).map(([name,a],i)=>({id:String(i+1),fields:{NumeroColaborador:i+1,NomeColaborador:name,Funcao:'Known function',EmailMicrosoft:a.mail,TipoUtilizador:name==='admin'?'ADMIN':name==='chief'?'CHEFIA':'COLABORADOR',Ativo:true}}));
  function sheet(name){return {getLastRow:()=>tables[name].length,appendRow:r=>tables[name].push([...r]),setFrozenRows(){},getDataRange:()=>({getValues:()=>tables[name].map(r=>[...r])}),getRange:r=>({setValues:v=>{tables[name][r-1]=[...v[0]];}})};}
@@ -47,9 +47,10 @@ function fixture(){
   if(url.endsWith('/lists')&&opt.method==='post'){exists=true;return response(201,{id:'entities-list'});}
   return response(200,{value:[]});
  }}});
- for(const f of ['PerformanceCrypto.gs','Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs','PerformanceExcel.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
+ for(const f of ['PerformanceCrypto.gs','Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs','PerformanceExcel.gs','PerformanceCentral.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
  const criterion={id:'c',name:'Approved test criterion',group:'result',weight:1,status:'definition',direction:'manual',target:100,unit:'points',definition:'Defined test rule'};
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
+ if(options.central){proposals.templates[0].id='template-B';proposals.templates[0].objectives[0].criteria=[['B2-2','%',100,'higher'],['B4-3','€/animal recebido',1,'lower'],['B5-2','%',100,'higher']].map(([id,unit,target,direction])=>({...criterion,id,unit,target,direction}));}
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
  return {api,ctx,records,tables,files,proposals,excel:rows=>{excelRows=rows;excelTag=crypto.randomUUID();files.set('source-xlsx',{id:'source-xlsx',content:{},permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor.admin}}]});},excelCatalog:()=>excelCatalog,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},residualOwner:flag=>{residualOwner=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
@@ -290,4 +291,25 @@ test('Excel corporate imports retain KPI snapshots and do not aggregate periods 
  f.excel([['2026-Q1','','EMP/k','Test company KPI','%',1.2,'Same period cohort','','Pronto'],['2026-Q2','','EMP/k','Test company KPI','%',2,'Different period','','Pronto']]);
  const report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.imported,1);assert.equal(report.issues.length,1);
  const saved=ok(f.api('admin','/bsc-results'))[0];assert.equal(saved.result.actual,1.2);assert.equal(saved.kpi.target,1.5);assert.equal(saved.period,'2026-Q1');
+});
+
+test('central workbook connection creates only the matched draft, versions updates and preserves manual/submitted results',()=>{
+ const f=fixture({central:true});ok(f.api('admin','/setup','POST'));update(f,'users','legacy-3',{roleId:'known-role',managerId:'legacy-2'});
+ let template=ok(f.api('admin','/catalog')).templates[0];template.objectives[0].criteria.forEach(c=>c.status='active');
+ for(const status of ['validation','approved','active'])template=update(f,'templates','template-B',{...template,status});
+ f.excel([]);let rows=[{sheetRow:36,values:[46307,'Supplier','1',10,10,2000,null,.2,1,1],formulas:[]}];
+ f.ctx.performanceCentralRead_=()=>({file:{id:'source-xlsx',name:'base.xlsx',eTag:'central-tag',webUrl:'https://company.test/base.xlsx'},preview:f.ctx.performanceCentralPreview_(rows,{name:'base.xlsx'})});
+ assert.equal(f.api('chief','/central-source').ok,false);
+ const cfg=ok(f.api('admin','/central-source','PUT',{expectedVersion:0,path:'base.xlsx',employeeId:'legacy-3',templateId:'template-B',period:'2026-Q4',enabled:true}));
+ assert.equal(f.api('admin','/central-source','PUT',{expectedVersion:0,path:'base.xlsx'}).ok,false);
+ let report=ok(f.api('admin','/central-source/sync','POST',{force:true}));assert.equal(report.imported,3);
+ let e=ok(f.api('admin','/evaluations/'+report.evaluationId));assert.equal(e.period,'2026-Q4');assert.equal(e.employeeId,'legacy-3');assert.equal(e.template.version,template.version);assert.equal(e.state,'draft');assert.equal(e.calculation.complete,false);assert.equal(e.results['B2-2'].source.provisional,true);
+ const version=e.version;report=ok(f.api('admin','/central-source/sync','POST',{force:true}));assert.equal(report.imported,0);assert.equal(ok(f.api('admin','/evaluations/'+e.id)).version,version);
+ assert.equal(f.api('alice','/central-source/sync','POST',{force:true}).ok,false);
+ const results=structuredClone(e.results);results['B2-2']={actual:81,na:false,evidence:'Manual override'};
+ e=ok(f.api('admin','/evaluations/'+e.id,'PUT',{expectedVersion:e.version,results,comment:'',improvementPlan:'',seriousIncident:false,incidentReview:''}));
+ rows[0].values[7]=.3;report=ok(f.api('admin','/central-source/sync','POST',{force:true}));assert.equal(report.protected,1);e=ok(f.api('admin','/evaluations/'+e.id));assert.equal(e.results['B2-2'].actual,81);assert.equal(e.results['B4-3'].actual,60);
+ for(const state of ['evaluation','validation'])e=ok(f.api('admin','/evaluations/'+e.id+'/transition','POST',{expectedVersion:e.version,state}));
+ const frozen=e.version;rows[0].values[7]=.4;report=ok(f.api('admin','/central-source/sync','POST',{force:true}));assert.equal(report.protected,3);assert.equal(ok(f.api('admin','/evaluations/'+e.id)).version,frozen);
+ assert.equal(ok(f.api('admin','/evaluations')).length,1);
 });
