@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 const token=who=>'authorized-'+who+'x'.repeat(110);
 const actor={admin:{id:'admin-oid',mail:'admin@company.test'},chief:{id:'chief-oid',mail:'chief@company.test'},alice:{id:'alice-oid',mail:'alice@company.test'},bob:{id:'bob-oid',mail:'bob@company.test'}};
 function fixture(){
- const tables={},props=new Map([['COMPANY_SITE_ID','montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154']]),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,residualOwner=false,fetches=0;
+ const tables={},props=new Map([['COMPANY_SITE_ID','montedopastopt.sharepoint.com,8c2379e3-75a3-4dc7-a6d1-2e1ba1d18db9,6673446f-32ef-467c-8bfc-0c8177bdb154']]),records=[],files=new Map();let exists=false,failCommit=false,unsafePermissions=false,residualOwner=false,fetches=0,excelRows=[],excelCatalog=[],excelTag='tag-1';
  const people=Object.entries(actor).map(([name,a],i)=>({id:String(i+1),fields:{NumeroColaborador:i+1,NomeColaborador:name,Funcao:'Known function',EmailMicrosoft:a.mail,TipoUtilizador:name==='admin'?'ADMIN':name==='chief'?'CHEFIA':'COLABORADOR',Ativo:true}}));
  function sheet(name){return {getLastRow:()=>tables[name].length,appendRow:r=>tables[name].push([...r]),setFrozenRows(){},getDataRange:()=>({getValues:()=>tables[name].map(r=>[...r])}),getRange:r=>({setValues:v=>{tables[name][r-1]=[...v[0]];}})};}
  const db={getSheetByName:n=>tables[n]?sheet(n):null,insertSheet:n=>{tables[n]=[];return sheet(n)}};
@@ -17,6 +17,15 @@ function fixture(){
  UrlFetchApp:{fetch:(url,opt)=>{
   fetches++;
   const bearer=opt.headers.Authorization.slice(7),who=Object.keys(actor).find(k=>bearer===token(k));if(!who)return response(401,{});
+  if(url.includes('/workbook/')){
+    if(url.includes('Resultados/headerRowRange'))return response(200,{rowIndex:5,values:[['Período','N.º colaborador','Código indicador','Indicador','Unidade','Valor realizado','Evidência','Observação','Estado']]});
+    if(url.includes('Resultados/rows?')){const skip=Number(new URL(url).searchParams.get('$skip')||0);return response(200,{value:excelRows.slice(skip,skip+250).map((v,i)=>({index:skip+i,values:[v]}))});}
+    if(url.includes('Indicadores/rows?')){const skip=Number(new URL(url).searchParams.get('$skip')||0);return response(200,{value:excelCatalog.slice(skip,skip+250).map((v,i)=>({index:skip+i,values:[v]}))});}
+    if(url.includes('Indicadores/rows/add')){excelCatalog.push(...JSON.parse(opt.payload).values);return response(200,{});}
+    if(url.includes('worksheets/Indicadores/range(')&&opt.method==='patch'){excelCatalog=JSON.parse(opt.payload).values;return response(200,{});}
+    return response(404,{});
+  }
+  if(url.includes('/drive/root:/base.xlsx?'))return response(200,{id:'source-xlsx',name:'base.xlsx',webUrl:'https://company.test/base.xlsx',eTag:excelTag,file:{mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}});
   if(url.includes('/drive/')){
     const path=url.split('/drive/')[1];
     if(path.startsWith('root:/')&&opt.method==='put'){const id=crypto.randomUUID();const file={id,content:JSON.parse(opt.payload),permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor[who]}}]};files.set(id,file);return response(201,{id});}
@@ -38,12 +47,12 @@ function fixture(){
   if(url.endsWith('/lists')&&opt.method==='post'){exists=true;return response(201,{id:'entities-list'});}
   return response(200,{value:[]});
  }}});
- for(const f of ['PerformanceCrypto.gs','Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
+ for(const f of ['PerformanceCrypto.gs','Bcrypt.gs','Code.gs','PerformanceDomain.gs','PerformanceApi.gs','PerformanceStore.gs','PerformanceLocal.gs','PerformancePrivate.gs','PerformanceSource.gs','PerformanceExcel.gs'])vm.runInContext(fs.readFileSync('google-local/'+f,'utf8'),ctx);
  const criterion={id:'c',name:'Approved test criterion',group:'result',weight:1,status:'definition',direction:'manual',target:100,unit:'points',definition:'Defined test rule'};
  const proposals={roles:[{id:'known-role',name:'Known function'}],objectives:[{id:'corp',name:'Provided source objective',scope:'corporate',perspective:'F',status:'definition',definition:'Source proposal'}],kpis:[{id:'k',name:'Provided source KPI',objectiveId:'corp',status:'definition',direction:'higher',target:null,unit:'',definition:''}],templates:[{id:'t',name:'Provided role proposal',roleId:'known-role',status:'definition',method:'legacy',objectives:[{id:'o',name:'Provided objective',weight:100,strategicIds:['corp'],criteria:[criterion]}],skills:[]}]};
  ctx.performanceProposals_=()=>JSON.parse(JSON.stringify(proposals));ctx.setup_();
  const api=(who,path,method='GET',body={})=>JSON.parse(JSON.stringify(ctx.localApi({action:'performance',adminToken:token(who),path,method,body})));
- return {api,ctx,records,tables,files,proposals,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},residualOwner:flag=>{residualOwner=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
+ return {api,ctx,records,tables,files,proposals,excel:rows=>{excelRows=rows;excelTag=crypto.randomUUID();files.set('source-xlsx',{id:'source-xlsx',content:{},permissions:[{id:'creator',roles:['write'],grantedToV2:{user:actor.admin}}]});},excelCatalog:()=>excelCatalog,fetchCount:()=>fetches,unsafePermissions:flag=>{unsafePermissions=flag},residualOwner:flag=>{residualOwner=flag},local:r=>JSON.parse(JSON.stringify(ctx.localApi(r))),failCommit:flag=>{failCommit=flag}};
 }
 function ok(r){assert.equal(r.ok,true,r.error);return r.data;}
 function update(f,kind,id,patch){const catalog=ok(f.api('admin','/catalog'));const old=catalog[kind].find(r=>r.id===id);return ok(f.api('admin','/catalog/'+kind+'/'+id,'PUT',{...old,...patch,expectedVersion:old.version}));}
@@ -230,4 +239,55 @@ test('SharePoint implicit owners do not block a draft and only ciphertext is sto
  assert.equal(file.content.format,'mdp360-encrypted-v1');assert.equal(JSON.stringify(file.content).includes('confidential detail'),false);
  assert.equal(f.ctx.performancePrivateRead_(id,token('admin')).versions[0].comment,'confidential detail');
  assert.equal(f.ctx.performancePrivateRead_(id,token('bob')),null);
+});
+
+
+function excelDraftFixture(){
+ const f=fixture();ok(f.api('admin','/setup','POST'));
+ update(f,'users','legacy-3',{roleId:'known-role',managerId:'legacy-2'});
+ let t=ok(f.api('admin','/catalog')).templates[0];t.objectives[0].criteria[0].status='active';
+ for(const status of ['validation','approved','active'])t=update(f,'templates','t',{...t,status});
+ const e=ok(f.api('admin','/evaluations','POST',{employeeId:'legacy-3',templateId:'t',period:'2026-Q1'}));
+ f.excel([['2026-Q1','3','IND/t/c','Test KPI','points',50,'Source evidence','','Pronto']]);
+ ok(f.api('admin','/data-source','PUT',{path:'base.xlsx',enabled:true,expectedVersion:0}));return {f,e};
+}
+test('Excel source imports confirmed rows, records provenance, updates changed imports and preserves manual overrides',()=>{
+ const {f,e}=excelDraftFixture();assert.equal(f.api('alice','/data-source').ok,false);assert.equal(f.api('chief','/data-source/sync','POST').ok,false);
+ let report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.imported,1);
+ let saved=ok(f.api('admin','/evaluations/'+e.id));assert.equal(saved.results.c.actual,50);assert.equal(saved.calculation.score,50);assert.equal(saved.state,'draft');assert.equal(saved.results.c.source.code,'IND/t/c');
+ assert.equal(ok(f.api('admin','/data-source/sync','POST')).cached,true);
+ f.excel([['2026-Q1','3','IND/t/c','Test KPI','points',0,'Zero is actual','','Pronto']]);
+ assert.equal(ok(f.api('admin','/data-source/sync','POST')).imported,1);saved=ok(f.api('admin','/evaluations/'+e.id));assert.equal(saved.results.c.actual,0);
+ ok(f.api('admin','/evaluations/'+e.id,'PUT',{expectedVersion:saved.version,results:{c:{actual:25,na:false,evidence:'Manual'}},comment:'',improvementPlan:'',seriousIncident:false,incidentReview:''}));
+ f.excel([['2026-Q1','3','IND/t/c','Test KPI','points',60,'Changed source','','Pronto']]);report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.protected,1);assert.equal(ok(f.api('admin','/evaluations/'+e.id)).results.c.actual,25);
+ assert.equal(ok(f.api('admin','/versions/templates/t'))[0].status,'definition');
+});
+test('Excel rejects duplicates, missing values, wrong units, unrecognized collaborators and unavailable criteria without writing',()=>{
+ const {f,e}=excelDraftFixture(),row=['2026-Q1','3','IND/t/c','Test KPI','points',50,'','','Pronto'];
+ for(const rows of [[row,row],[[...row.slice(0,5),null,...row.slice(6)]],[[...row.slice(0,4),'%',...row.slice(5)]],[[row[0],'missing',...row.slice(2)]],[[row[0],row[1],'IND/t/new',...row.slice(3)]]]){
+  f.excel(rows);const report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.imported,0);assert.equal(report.issues.length>0,true);assert.deepEqual(ok(f.api('admin','/evaluations/'+e.id)).results,{});
+ }
+ f.excel([[...row.slice(0,8),'Em preparação']]);assert.equal(ok(f.api('admin','/data-source/sync','POST')).ready,0);
+ assert.equal(f.api('admin','/data-source','PUT',{path:'https://external.test/data.xlsx',enabled:true,expectedVersion:1}).ok,false);
+});
+test('Excel catalog supports additional roles and criteria without hardcoded templates; submitted assessments remain intact',()=>{
+ const {f,e}=excelDraftFixture();let report=ok(f.api('admin','/data-source/catalog','POST'));assert.equal(report.indicators,2);
+ const role=ok(f.api('admin','/catalog/roles','POST',{name:'Future role'}));
+ const old=ok(f.api('admin','/catalog')).templates[0],newModel={...old,id:undefined,name:'Future model',roleId:role.id,status:'definition',objectives:[{...old.objectives[0],criteria:[{...old.objectives[0].criteria[0],id:'future-kpi',name:'Future defined KPI',status:'definition'}]}]};
+ const created=ok(f.api('admin','/catalog/templates','POST',newModel));report=ok(f.api('admin','/data-source/catalog','POST'));assert.equal(report.indicators,3);assert.equal(f.excelCatalog().some(r=>r[0]==='IND/'+created.id+'/future-kpi'),true);
+ let future=created;future.objectives[0].criteria[0].status='active';for(const status of ['validation','approved','active'])future=update(f,'templates',created.id,{...future,status});
+ update(f,'users','legacy-4',{roleId:role.id});const futureEvaluation=ok(f.api('admin','/evaluations','POST',{employeeId:'legacy-4',templateId:created.id,period:'2026-M01'}));
+ f.excel([['2026-M01','4','IND/'+created.id+'/future-kpi','Future defined KPI','points',88,'Future source','','Pronto']]);assert.equal(ok(f.api('admin','/data-source/sync','POST')).imported,1);assert.equal(ok(f.api('admin','/evaluations/'+futureEvaluation.id)).results['future-kpi'].actual,88);
+ f.excel([['2026-Q1','3','IND/t/c','Test KPI','points',50,'Source','','Pronto']]);
+ let saved=ok(f.api('admin','/evaluations/'+e.id));saved=ok(f.api('admin','/evaluations/'+e.id+'/transition','POST',{expectedVersion:saved.version,state:'evaluation'}));saved=ok(f.api('admin','/evaluations/'+e.id+'/transition','POST',{expectedVersion:saved.version,state:'validation'}));
+ report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.protected,1);assert.deepEqual(ok(f.api('admin','/evaluations/'+e.id)).results,{});
+});
+
+
+test('Excel corporate imports retain KPI snapshots and do not aggregate periods or percentages',()=>{
+ const {f}=excelDraftFixture();let k=update(f,'kpis','k',{target:1.5,unit:'%',direction:'lower',definition:'Supplied cohort ratio',targetPeriod:'2026-Q1'});
+ for(const status of ['validation','approved','active'])k=update(f,'kpis','k',{...k,status});
+ f.excel([['2026-Q1','','EMP/k','Test company KPI','%',1.2,'Same period cohort','','Pronto'],['2026-Q2','','EMP/k','Test company KPI','%',2,'Different period','','Pronto']]);
+ const report=ok(f.api('admin','/data-source/sync','POST'));assert.equal(report.imported,1);assert.equal(report.issues.length,1);
+ const saved=ok(f.api('admin','/bsc-results'))[0];assert.equal(saved.result.actual,1.2);assert.equal(saved.kpi.target,1.5);assert.equal(saved.period,'2026-Q1');
 });
